@@ -207,8 +207,8 @@ class WikiHandler(ContentHandler):
             return self.indents2xml(text, asText)
 
         [text, level, numbered] = self.indents2xml(text, asText)
-        text = re.sub(ur"{{par ext[^}]*}}", ur"(Par extension)", text)
-        text = re.sub(ur"{{figuré[^}]*}}", ur"(Figuré)", text)
+#        text = re.sub(ur"{{par ext[^}]*}}", ur"(Par extension)", text)
+ #       text = re.sub(ur"{{figuré[^}]*}}", ur"(Figuré)", text)
 #        text = re.sub(ur"{{géométrie[^}]*}}", ur"(Géométrie)", text)
         text = re.sub(ur"{{w\|([^}]+)}}", ur"<i>\1</i>", text)
         #text = re.sub(ur"{{source\|([^}]+)}}", ur"- (\1)", text)
@@ -231,6 +231,8 @@ class WikiHandler(ContentHandler):
         for paysWiki in pays:
             text = re.sub(paysWiki, pays[paysWiki], text)
 
+        for relationWiki in relations:
+            text = re.sub(relationWiki, relations[relationWiki], text)
         # Remove all unrecognized wiki tags
         text = re.sub(r"{{[^}]+}}", "", text)
 

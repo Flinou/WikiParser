@@ -6,7 +6,42 @@ global frequences
 global typesAllowed
 global pays
 global regions
+global relations
 
+relations = {
+    ur"{{figuré[^}]*}}": ur"(Figuré)",
+    ur"{{idiomatique[^}]*}}": ur"(Figuré)",
+    ur"{{au figuré[^}]*}}": ur"(Au figuré)",
+    ur"{{métaph[^}]*}}": ur"(Métaphore)",
+    ur"{{métaphore[^}]*}}": ur"(Métaphore)",
+    ur"{{sens propre[^}]*}}": ur"(Sens propre)",
+    ur"{{propre[^}]*}}": ur"(Sens propre)",
+    ur"{{par métonymie[^}]*}}": ur"(Par métonymie)",
+    ur"{{métonymie[^}]*}}": ur"(Par métonymie)",
+    ur"{{méton[^}]*}}": ur"(Par métonymie)",
+    ur"{{par hyperbole[^}]*}}": ur"(Par hyperbole)",
+    ur"{{hyperbole[^}]*}}": ur"(Hyperbole)",
+    ur"{{hyperb[^}]*}}": ur"(Hyperbole)",
+    ur"{{exag[^}]*}}": ur"(Exagération)",
+    ur"{{exagération[^}]*}}": ur"(Exagération)",
+    ur"{{par extension[^}]*}}": ur"(Par extension)",
+    ur"{{par ext[^}]*}}": ur"(Par extension)",
+    ur"{{par analogie[^}]*}}": ur"(Par analogie)",
+    ur"{{analogie[^}]*}}": ur"(Analogie)",
+    ur"{{en particulier[^}]*}}": ur"(En particulier)",
+    ur"{{particulier[^}]*}}": ur"(En particulier)",
+    ur"{{partic[^}]*}}": ur"(En particulier)",
+    ur"{{part[^}]*}}": ur"(En particulier)",
+    ur"{{par litote[^}]*}}": ur"(Par litote)",
+    ur"{{par euphémisme[^}]*}}": ur"(Par euphémisme)",
+    ur"{{euphémisme[^}]*}}": ur"(Par euphémisme)",
+    ur"{{euph[^}]*}}": ur"(Par euphémisme)",
+    ur"{{euphém[^}]*}}": ur"(Par euphémisme)",
+    ur"{{spécifiquement[^}]*}}": ur"(Spécifiquement)",
+    ur"{{génériquement[^}]*}}": ur"(Génériquement)",
+    ur"{{spécialement[^}]*}}": ur"(Spécialement)",
+    ur"{{généralement[^}]*}}": ur"(Généralement)",
+}
 pays = {
     "{{Canada[^}]*}}": ur"(Canada)",
     "{{France[^}]*}}": ur"(France)",
