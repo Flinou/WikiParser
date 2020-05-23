@@ -4,6 +4,62 @@ global temporalites
 global registres
 global frequences
 global typesAllowed
+global pays
+global regions
+
+pays = {
+    "{{Canada[^}]*}}": ur"(Canada)",
+    "{{France[^}]*}}": ur"(France)",
+    "{{Guinée[^}]*}}": ur"(Guinée)",
+    "{{Mali[^}]*}}": ur"(Mali)",
+    "{{Belgique[^}]*}}": ur"(Belgique)"
+}
+
+regions = {
+    "{{Bordelais[^}]*}}": ur"(Bordelaise)",
+    "{{Acadie[^}]*}}": ur"(Acadie)",
+    "{{Auvergne[^}]*}}": ur"(Auvergne)",
+    "{{Aquitaine[^}]*}}": ur"(Aquitaine)",
+    "{{Antilles[^}]*}}": ur"(Antilles)",
+    "{{Anjou[^}]*}}": ur"(Anjou)",
+    "{{Bourgogne[^}]*}}": ur"(Bourgogne)",
+    "{{Berry[^}]*}}": ur"(Berry)",
+    "{{Bretagne[^}]*}}": ur"(Bretagne)",
+    "{{Champagne[^}]*}}": ur"(Champagne)",
+    "{{Corse[^}]*}}": ur"(Corse)",
+    "{{Franche-Comté[^}]*}}": ur"(Franche-Comté)",
+    "{{Gaspésie[^}]*}}": ur"(Gaspésie)",
+    "{{Gascogne[^}]*}}": ur"(Gascogne)",
+    "{{Guadeloupe[^}]*}}": ur"(Guadeloupe)",
+    "{{Guyane[^}]*}}": ur"(Guyane)",
+    "{{Le Mans[^}]*}}": ur"(Le Mans)",
+    "{{Languedoc-Roussillon[^}]*}}": ur"(Langedoc-Roussillon)",
+    "{{Limousin[^}]*}}": ur"(Limousin)",
+    "{{Lorraine[^}]*}}": ur"(Lorraine)",
+    "{{Louisiane[^}]*}}": ur"(Louisiane)",
+    "{{Lyonnais[^}]*}}": ur"(Lyonnais)",
+    "{{Lorraine[^}]*}}": ur"(Lorraine)",
+    "{{Martinique[^}]*}}": ur"(Martinique)",
+    "{{Mayotte[^}]*}}": ur"(Mayotte)",
+    "{{Midi[^}]*}}": ur"(Midi)",
+    "{{Midi toulousain[^}]*}}": ur"(Midi toulousain)",
+    "{{Montréal[^}]*}}": ur"(Montréal)",
+    "{{Provence[^}]*}}": ur"(Provence)",
+    "{{Québec[^}]*}}": ur"(Québec)",
+    "{{Quercy[^}]*}}": ur"(Quercy)",
+    "{{Normandie[^}]*}}": ur"(Normandie)",
+    "{{Nantes[^}]*}}": ur"(Nantes)",
+    "{{Picardie[^}]*}}": ur"(Picardie)",
+    "{{Poitou[^}]*}}": ur"(Poitou)",
+    "{{Polynésie française[^}]*}}": ur"(Polynésie française)",
+    "{{Occitanie[^}]*}}": ur"(Occitanie)",
+    "{{Provence[^}]*}}": ur"(Provence)",
+    "{{Réunion[^}]*}}": ur"(Réunion)",
+    "{{Rhône-Alpes[^}]*}}": ur"(Rhône-Alpes)",
+    "{{Vosges[^}]*}}": ur"(Vosges)",
+    "{{Var[^}]*}}": ur"(Var)",
+    "{{Velay[^}]*}}": ur"(Velay)"
+}
 
 typesAllowed = [
     ur"adjectif",
@@ -25,6 +81,7 @@ typesAllowed = [
     ur"déterminant",
     ur"nom",
     ur"nom commun",
+    ur"préposition",
     ur"pronom démonstratif",
     ur"pronom indéfini",
     ur"pronom interrogatif",

@@ -224,6 +224,13 @@ class WikiHandler(ContentHandler):
 
         for lexiqueWiki in lexiques:
             text = re.sub(lexiqueWiki, lexiques[lexiqueWiki], text)
+            
+        for regionWiki in regions:
+            text = re.sub(regionWiki, regions[regionWiki], text)
+
+        for paysWiki in pays:
+            text = re.sub(paysWiki, pays[paysWiki], text)
+
         # Remove all unrecognized wiki tags
         text = re.sub(r"{{[^}]+}}", "", text)
 
