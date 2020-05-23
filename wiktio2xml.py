@@ -89,55 +89,6 @@ class WikiHandler(ContentHandler):
             u"{-prèp-.*}}": u"préposition",
             u"{-post-.*}}": u"postposition"
             }
-        self.typesAllowed = [
-            ur"adjectif",
-            ur"adjectif démonstratif",
-            ur"adjectif exclamatif",
-            ur"adjectif indéfini",
-            ur"adjectif interrogatif",
-            ur"adjectif numéral",
-            ur"adjectif possessif",
-            ur"adverbe",
-            ur"adverbe indéfini",
-            ur"adverbe interrogatif",
-            ur"dverbe pronominal",
-            ur"adverbe relatif",
-            ur"article défini",
-            ur"article indéfini",
-            ur"article",
-            ur"conjonction de coordination",
-            ur"déterminant",
-            ur"nom",
-            ur"nom commun",
-            ur"pronom démonstratif",
-            ur"pronom indéfini",
-            ur"pronom interrogatif",
-            ur"ronom personnel",
-            ur"pronom possessif",
-            ur"pronom relatif",
-            ur"pronom",
-            ur"pronom-adjectif",
-            ur"verbe" ]
-
-        # This is the list of word types we don't want to keep
-        self.wordSkipTypes = [
-            "{{-flex-verb-"
-            ]
-
-        self.wordSubTypes = {
-            "{{1ergroupe}}": "1er groupe",
-            "{{2egroupe}}": "2eme groupe",
-            "{{3egroupe}}": "3eme groupe",
-            }
-
-        # These definitions will always be skipped
-        self.filterDefinitionType = [ ur"{{vulg[^}]*}}",
-                                      ur"{{injur[^}]*}}",
-                                      ur"{{sexe[^}]*}}",
-                                      ur"{{sexua[^}]*}}",
-                                      ur"coït",
-                                      ur"argot"]
-
         # These definitions will be skipped only if not in the first
         # sense found
         self.filterSecondDefinitionType = [
@@ -358,12 +309,12 @@ class WikiHandler(ContentHandler):
                     #state = Wiktio.DEFINITION
                     definition.addDescription("", 0, False)
                 elif matching_word_nature:
-                    if "flexion" not in l and matching_word_nature.group(1) in self.typesAllowed:
+                    if "flexion" not in l and matching_word_nature.group(1) in typesAllowed:
                         definition.setType(matching_word_nature.group(1)) 
                         state=Wiktio.DEFINITION
                         toAdd = True
                 elif matching_word_nature_bis:
-                    if "flexion" not in l and matching_word_nature_bis.group(1) in self.typesAllowed:
+                    if "flexion" not in l and matching_word_nature_bis.group(1) in typesAllowed:
                         definition.setType(matching_word_nature_bis.group(1)) 
                         state=Wiktio.DEFINITION
                         toAdd = True

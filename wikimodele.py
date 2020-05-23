@@ -3,6 +3,38 @@ global lexiques
 global temporalites
 global registres
 global frequences
+global typesAllowed
+
+typesAllowed = [
+    ur"adjectif",
+    ur"adjectif démonstratif",
+    ur"adjectif exclamatif",
+    ur"adjectif indéfini",
+    ur"adjectif interrogatif",
+    ur"adjectif numéral",
+    ur"adjectif possessif",
+    ur"adverbe",
+    ur"adverbe indéfini",
+    ur"adverbe interrogatif",
+    ur"dverbe pronominal",
+    ur"adverbe relatif",
+    ur"article défini",
+    ur"article indéfini",
+    ur"article",
+    ur"conjonction de coordination",
+    ur"déterminant",
+    ur"nom",
+    ur"nom commun",
+    ur"pronom démonstratif",
+    ur"pronom indéfini",
+    ur"pronom interrogatif",
+    ur"ronom personnel",
+    ur"pronom possessif",
+    ur"pronom relatif",
+    ur"pronom",
+    ur"pronom-adjectif",
+    ur"verbe" 
+]
 registres = {
     "{{familier[^}]*}}": ur"(Familier)",
     "{{informel[^}]*}}": ur"(Informel)",
