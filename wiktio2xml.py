@@ -19,7 +19,7 @@
 
 from xml.sax import parse
 from xml.sax.handler import ContentHandler
-from lexique import *
+from wikimodele import *
 import sys
 import re
 import os
@@ -130,36 +130,6 @@ class WikiHandler(ContentHandler):
             "{{3egroupe}}": "3eme groupe",
             }
 
-        self.registres = {
-            "{{familier[^}]*}}": ur"(Familier)",
-            "{{informel[^}]*}}": ur"(Informel)",
-            "{{populaire[^}]*}}": ur"(Populaire)",
-            "{{vulgaire[^}]*}}": ur"(Vulgaire)",
-            "{{soutenu[^}]*}}": ur"(Soutenu)",
-            "{{formel[^}]*}}": ur"(Soutenu)",
-            "{{enfantin[^}]*}}": ur"(Langage enfantin}"
-            }
-
-        self.temporalites = {
-            "{{vieilli[^}]*}}": ur"(Vieilli)",
-            "{{archaïsme[^}]*}}": ur"(Archaïsme)",
-            "{{désuet[^}]*}}": ur"(Désuet)",
-            "{{néologisme[^}]*}}": ur"(Néologisme)"
-            }
-        self.frequence = {
-            "{{courant[^}]*}}": ur"(Courant)",
-            "{{peu usité[^}]*}}": ur"(Peu usité)",
-            "{{rare[^}]*}}": ur"(Rare)",
-            "{{très rare[^}]*}}": ur"(Très rare)",
-            "{{extrêmement rare[^}]*}}": ur"(Extrêmement rare)",
-            "{{hapax[^}]*}}": ur"(Hapax)",
-            "{{peu attesté[^}]*}}": ur"(Peu attesté)",
-            "{{plus rare[^}]*}}": ur"(Plus rare}",
-            "{{moins courant[^}]*}}": ur"(Moins courant}",
-            "{{beaucoup moins courant[^}]*}}": ur"(Beaucoup moins courant}",
-            "{{plus courant[^}]*}}": ur"(Plus courant}",
-            "{{beaucoup plus courant[^}]*}}": ur"(Beaucoup plus courant}"
-            }
         # These definitions will always be skipped
         self.filterDefinitionType = [ ur"{{vulg[^}]*}}",
                                       ur"{{injur[^}]*}}",
@@ -292,14 +262,14 @@ class WikiHandler(ContentHandler):
         text = re.sub(ur"{{w\|([^}]+)}}", ur"<i>\1</i>", text)
         #text = re.sub(ur"{{source\|([^}]+)}}", ur"- (\1)", text)
 #        text = re.sub(ur"{{source\|([^}]+)}}", ur"Source :", text)
-        for registreWiki in self.registres.keys():
-            text = re.sub(registreWiki, self.registres[registreWiki], text)
+        for registreWiki in registres.keys():
+            text = re.sub(registreWiki, registres[registreWiki], text)
         
-        for frequenceWiki in self.frequence.keys():
-            text = re.sub(frequenceWiki, self.frequence[frequenceWiki], text)
+        for frequenceWiki in frequences.keys():
+            text = re.sub(frequenceWiki, frequences[frequenceWiki], text)
         
-        for temporaliteWiki in self.temporalites.keys():
-            text = re.sub(temporaliteWiki, self.temporalites[temporaliteWiki], text)
+        for temporaliteWiki in temporalites.keys():
+            text = re.sub(temporaliteWiki, temporalites[temporaliteWiki], text)
 
         for lexiqueWiki in lexiques:
             text = re.sub(lexiqueWiki, lexiques[lexiqueWiki], text)
