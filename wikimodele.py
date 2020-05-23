@@ -7,6 +7,22 @@ global typesAllowed
 global pays
 global regions
 global relations
+global connotations
+
+connotations = {
+    ur"{{mélior[^}]*}}": ur"(Mélioratif)",
+    ur"{{péj[^}]*}}": ur"(Péjoratif)",
+    ur"{{péjor[^}]*}}": ur"(Péjoratif)",
+    ur"{{affectueux[^}]*}}": ur"(Affectueux)", 	
+    ur"{{par plaisanterie[^}]*}}": ur"(Par plaisanterie)",
+    ur"{{par plais[^}]*}}": ur"(Par plaisanterie)",
+    ur"{{plais[^}]*}}": ur"(Par plaisanterie)",
+    ur"{{par dérision[^}]*}}": ur"(Par dérision)", 	
+    ur"{{injurieux[^}]*}}": ur"(Injurieux)",
+    ur"{{injur[^}]*}}": ur"(Injurieux)",
+    ur"{{ironique[^}]*}}": ur"(Ironique)",
+    ur"{{iron[^}]*}}": ur"(Ironique)"
+}
 
 relations = {
     ur"{{figuré[^}]*}}": ur"(Figuré)",
@@ -128,11 +144,17 @@ typesAllowed = [
     ur"verbe" 
 ]
 registres = {
-    "{{familier[^}]*}}": ur"(Familier)",
+    "{{très fam[^}]*}}": ur"(Très familier)",
+    "{{fam[^}]*}}": ur"(Familier)",
+    "{{dial[^}]*}}": ur"(Familier)",
+    "{{oral[^}]*}}": ur"(Familier)",
     "{{informel[^}]*}}": ur"(Informel)",
     "{{populaire[^}]*}}": ur"(Populaire)",
+    "{{pop[^}]*}}": ur"(Populaire)",
     "{{vulgaire[^}]*}}": ur"(Vulgaire)",
+    "{{vulg[^}]*}}": ur"(Vulgaire)",
     "{{soutenu[^}]*}}": ur"(Soutenu)",
+    "{{écrit[^}]*}}": ur"(Soutenu)",
     "{{formel[^}]*}}": ur"(Soutenu)",
     "{{enfantin[^}]*}}": ur"(Langage enfantin}"
 }
@@ -145,8 +167,10 @@ temporalites = {
 }
 frequences = {
     "{{courant[^}]*}}": ur"(Courant)",
+    "{{cour[^}]*}}": ur"(Courant)",
     "{{peu usité[^}]*}}": ur"(Peu usité)",
     "{{rare[^}]*}}": ur"(Rare)",
+    "{{rar[^}]*}}": ur"(Rare)",
     "{{très rare[^}]*}}": ur"(Très rare)",
     "{{extrêmement rare[^}]*}}": ur"(Extrêmement rare)",
     "{{hapax[^}]*}}": ur"(Hapax)",

@@ -233,6 +233,11 @@ class WikiHandler(ContentHandler):
 
         for relationWiki in relations:
             text = re.sub(relationWiki, relations[relationWiki], text)
+        
+        for connotationWiki in connotations:
+            text = re.sub(connotationWiki, connotations[connotationWiki], text)
+
+
         # Remove all unrecognized wiki tags
         text = re.sub(r"{{[^}]+}}", "", text)
 
