@@ -8,7 +8,51 @@ global pays
 global regions
 global relations
 global connotations
+global diaintegrations
+global genres
+global contraintes
+global argots
 
+diaintegrations = {
+    ur"{{anglicisme[^}]*}}": ur"(Anglicisme)",
+    ur"{{germanisme[^}]*}}": ur"(Germanisme)",
+    ur"{{gallicisme[^}]*}}": ur"(Gallicisme)",
+    ur"{{hispanisme[^}]*}}": ur"(Hispanisme)",
+    ur"{{italianisme[^}]*}}": ur"(Italianisme)",
+    ur"{{lusitanisme[^}]*}}": ur"(Lusitanisme)",
+    ur"{{latinisme[^}]*}}": ur"(Latinisme)"
+}
+
+genres = {
+    ur"{{litt[^}]*}}": ur"(Littéraire)",
+    ur"{{poét[^}]*}}": ur"(Poétique)",
+    ur"{{didact[^}]*}}": ur"(Didactique)"
+}
+
+contraintes = {
+    ur"{{épithète[^}]*}}": ur"(Épithète)",
+    ur"{{apposition[^}]*}}": ur"(Apposition)",
+    ur"{{absolument[^}]*}}": ur"(Absolument)",
+    ur"{{ellip[^}]*}}": ur"(Ellipse)",
+    ur"{{au pluriel[^}]*}}": ur"(Au pluriel)",
+    ur"{{au singulier[^}]*}}": ur"(Au singulier)",
+    ur"{{au masculin[^}]*}}": ur"(Au masculin)",
+    ur"{{au féminin[^}]*}}": ur"(Au féminin)"
+}
+
+argots = {
+    ur"{{arg[^}]*}}": ur"(Argot)",
+    ur"{{argot scolaire[^}]*}}": ur"(Argot scolaire)",
+    ur"{{argot polytechnicien[^}]*}}": ur"(Argot polytechnicien)",
+    ur"{{argot policier[^}]*}}": ur"(Argot policier)",
+    ur"{{argot Internet[^}]*}}": ur"(Argot Internet)",
+    ur"{{argot typographes[^}]*}}": ur"(Argot typographes)",
+    ur"{{argot militaire[^}]*}}": ur"(Argot militaire)",
+    ur"{{argot poilu[^}]*}}": ur"(Argot poilu)",
+    ur"{{argot voleurs[^}]*}}": ur"(Argot voleurs)",
+    ur"{{Argadz[^}]*}}": ur"(Argadz)",
+    ur"{{langage SMS[^}]*}}": ur"(Langage SMS)"
+}
 connotations = {
     ur"{{mélior[^}]*}}": ur"(Mélioratif)",
     ur"{{péj[^}]*}}": ur"(Péjoratif)",

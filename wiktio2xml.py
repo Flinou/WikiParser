@@ -30,7 +30,7 @@ import wiktio
 from wiktio import Wiktio
 
 compteur = 0
-compteurMax = 10
+compteurMax = 11
 debug = False
 toAdd = False
 # define Python user-defined exceptions
@@ -237,7 +237,17 @@ class WikiHandler(ContentHandler):
         for connotationWiki in connotations:
             text = re.sub(connotationWiki, connotations[connotationWiki], text)
 
+        for argotWiki in argots:
+            text = re.sub(argotWiki, argots[argotWiki], text)
 
+        for genreWiki in genres:
+            text = re.sub(genreWiki, genres[genreWiki], text)
+        
+        for contrainteWiki in contraintes:
+            text = re.sub(contrainteWiki, contraintes[contrainteWiki], text)
+
+        for diaintegrationWiki in diaintegrations:
+            text = re.sub(diaintegrationWiki, diaintegrations[diaintegrationWiki], text)
         # Remove all unrecognized wiki tags
         text = re.sub(r"{{[^}]+}}", "", text)
 
