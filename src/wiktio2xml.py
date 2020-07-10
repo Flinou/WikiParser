@@ -87,35 +87,6 @@ class WikiHandler(ContentHandler):
             "{{mf}}": u"masculin et féminin"
             }
 
-        self.wordTypes = {
-            u"{{.*nom.*}}": u"nom",
-            u"{{-nom-pr.*}}": u"nom propre",
-            u"{{.*verb.*}}": u"verbe",
-            u"{{.*pronom.*}}": u"pronom",
-            u"{{.*adjectif.*}}": u"adjectif",
-            u"{{.*adverbe.*}}": u"adverbe",
-            u"{-art-.*}}": u"article",
-            u"{-conj-.*}}": u"conjunction",
-            u"{-prèp-.*}}": u"préposition",
-            u"{-post-.*}}": u"postposition"
-            }
-        # These definitions will be skipped only if not in the first
-        # sense found
-        self.filterSecondDefinitionType = [
-                                      ur"{{dés[^}]*}}",
-                                      ur"{{vx[^}]*}}",
-                                      ur"{{métonymie[^}]*}}",
-                                      ur"{{familier[^}]*}}",
-                                      ur"{{hérald[^}]*}}",
-                                      ur"{{botan[^}]*}}",
-                                      ur"{{zool[^}]*}}",
-                                      ur"{{polit[^}]*}",
-                                      ur"{{péj[^}]*}}",
-                                      ur"{{oeno[^}]*}}",
-                                      ur"{{litt[^}]*}}",
-                                      ur"{{figuré[^}]*}}"
-                                      ]
-
     def endElement(self, name):
         global compteur
         compteur = compteur + 1 
