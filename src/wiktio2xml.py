@@ -246,44 +246,6 @@ class WikiHandler(ContentHandler):
                     #check if the precision is worth adding in definition
                     if precisionVal in precisionsAllowed.keys():
                         text = text.replace(match,precisionsAllowed[precisionVal]) 
-            '''for registreWiki in registres.keys():
-                text = re.sub(registreWiki, registres[registreWiki], text)
-                    
-            for frequenceWiki in frequences.keys():
-                text = re.sub(frequenceWiki, frequences[frequenceWiki], text)
-            
-            for temporaliteWiki in temporalites.keys():
-                text = re.sub(temporaliteWiki, temporalites[temporaliteWiki], text)
-
-            #for lexiqueWiki in lexiques:
-             #   text = re.sub(lexiqueWiki, lexiques[lexiqueWiki], text)
-            for regex, sub in lexiques:
-                text = re.sub(regex, sub, text)
-                
-            for regionWiki in regions:
-                text = re.sub(regionWiki, regions[regionWiki], text)
-
-            for paysWiki in pays:
-                text = re.sub(paysWiki, pays[paysWiki], text)
-
-            for relationWiki in relations:
-                text = re.sub(relationWiki, relations[relationWiki], text)
-            
-            for connotationWiki in connotations:
-                text = re.sub(connotationWiki, connotations[connotationWiki], text)
-
-            for argotWiki in argots:
-                text = re.sub(argotWiki, argots[argotWiki], text)
-
-            for genreWiki in genres:
-                text = re.sub(genreWiki, genres[genreWiki], text)
-            
-            for contrainteWiki in contraintes:
-                text = re.sub(contrainteWiki, contraintes[contrainteWiki], text)
-
-            for diaintegrationWiki in diaintegrations:
-                text = re.sub(diaintegrationWiki, diaintegrations[diaintegrationWiki], text)
-            '''    
         # Remove all unrecognized wiki tags
         #text = re.sub(r"{{[^}]+}}", "", text)
         text = re.sub(r"{{[\w\W]*}}$", "", text)
@@ -492,10 +454,10 @@ try:
     parse(wikiFile, WikiHandler(wordslist, 'fr', _wiktio, output))
 except Exception as e: print(e)
 
-sortDicoFile(output, outputSorted)
-os.rename(outputSorted, output)
-splitDicoFile(output, 50000)
-os.remove(output)
+#sortDicoFile(output, outputSorted)
+#os.rename(outputSorted, output)
+#splitDicoFile(output, 50000)
+#os.remove(output)
 '''with open(output, 'a+', 0) as dictionnary:
     dictionnary.write("</root>")
 def sortchildrenby(parent, attr):
