@@ -137,11 +137,6 @@ class WikiHandler(ContentHandler):
                     matching_titleContent_number = re.match("\d",self.titleContent)
                 if len(self.titleContent) > 1 and matching_titleContent_whitespace is None and matching_titleContent_number is None and toAdd == True and '&' not in self.titleContent:
                     self.wiktio.addWord(word)
-                    '''if os.path.getsize("./" + self.output) > 10000000:
-                        self.wiktio.dumpHtmlFooter(self.output)
-                        self.cpt = self.cpt + 1
-                        self.output = self.origin + str(self.cpt)
-                        self.wiktio.dumpHtmlHeader(self.output)'''
                     self.wiktio.dump2html(self.output)
                     self.wiktio = wiktio.Wiktio()
             self.titleContent = ""
