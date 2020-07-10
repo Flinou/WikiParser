@@ -123,29 +123,7 @@ class WikiHandler(ContentHandler):
             self.textContent += ch
 
 
-# Manages bullets and numbered lists
-# mediawiki specification:
-# Bulleted: *
-# Numbered: #
-# Indent with no marking: :
-# Definition list: ;
-# Notes:
-# These may be combined at the start of the line to create
-# nested lists, e.g. *** to give a bulleted list three levels
-# deep, or **# to have a numbered list within two-levels of
-# bulleted list nesting.
-#
-# html specification:
-# Bulleted: <ul> [<li> </li>]+ </ul>
-# Numbered: <ol> [<li> </li>]+ </ol>
-# Notes:
-# These may be nested.
-#
-# We keep the level of indentation to close in:
-# self.lilevel
-#
 # Returns a list [text, level, numbered]
-# numbered = True if this is a numbered list
 #
     def indents2xml(self, text, asText):
         numbered = False
