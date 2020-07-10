@@ -106,7 +106,7 @@ class WikiHandler(ContentHandler):
                     matching_titleContent_whitespace = re.match(".* .*",self.titleContent, re.UNICODE)
                     #Remove words with digit in it
                     matching_titleContent_number = re.match("\d",self.titleContent)
-                if len(self.titleContent) > 1 and matching_titleContent_whitespace is None and matching_titleContent_number is None and toAdd == True and '&' not in self.titleContent:
+                if len(self.titleContent) > 1 and matching_titleContent_whitespace is None and matching_titleContent_number is None and toAdd == True:
                     self.wiktio.addWord(word)
                     self.wiktio.dump2html(self.output)
                     self.wiktio = wiktio.Wiktio()
