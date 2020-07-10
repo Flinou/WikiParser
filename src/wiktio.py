@@ -21,8 +21,11 @@
 # used
 
 import os.path
+import re
+import unidecode
 
 id = 0
+firstWrite = True
 # Represent the description of a definition
 # This is recursive, a description can hold an
 # unlimited number of subdescription
@@ -68,24 +71,38 @@ class Description:
             node.descriptions.append( description )
             return description
         return None
+    
+    def isData(self, description):
+        if len(description.text) < 1:
+            return False
+        else:
+            return True
 
     def dump2html(self, f):
-        if len(self.text) > 0:
-            f.write ( "<li>" + self.text + "</li>" )
+        global firstWrite
+        if len(self.text) > 0 and not str(self.text).isspace() and self.text.strip():
+            #For Android display purposes, need those tricks
+            if "INS_NL_BEF" in self.text and firstWrite:
+                self.text = re.sub("INS_NL_BEF","", self.text)
+                f.write ( "<li>" + self.text + "</li><br><br>" )
+            elif "INS_NL_BEF" in self.text and not firstWrite:
+                self.text = re.sub("INS_NL_BEF","", self.text)
+                f.write ( "\n<li>" + self.text + "</li><br><br>" )
+            #elif "INS_NL_AFT" in self.text:
+             #   self.text = re.sub("INS_NL_AFT","", self.text)
+              #  f.write ( "<li>" + self.text + "</li>\n" )
+            else:
+                f.write ( "<li>" + self.text + "</li>" )
+            firstWrite = False
         #self.Descriptions => exemple
+ #       self.descriptions = filter(self.isData, self.descriptions)
         if len(self.descriptions) > 0:
-            if self.level >= 0:
-                if self.numbered:
-                    f.write ( "<ul>" )
-                else:
-                    f.write ( "<ol>" )
+#            self.descriptions[-1].text=self.descriptions[-1].text + "IS_LAST"
             for d in self.descriptions:
                 d.dump2html(f)
-            if self.level >= 0:
-                if self.numbered:
-                    f.write ( "</ul>" )
-                else:
-                    f.write ( "</ol>" )
+            
+
+
 
 
 class Definition:
@@ -151,36 +168,20 @@ class Definition:
                 f.write ( "<a href='" + prefix + img + "'>" + \
                     img + '</a><br/>' )
 
-    def dump2htmlPrononciation(self, f, title, liste):
-        prefix = "http://commons.wikimedia.org/wiki/File:"
-        if len(liste):
-            f.write ( "<h2>" + title + "</h2>" )
-            f.write ( "<ul>" )
-            for s in liste:
-                f.write ( "<li><a href='" + prefix + s + "'>" \
-                    + s + "</a></li>" )
-            f.write ( "</ul>" )
-
-    def dump2htmlItem(self, f, title, liste):
-
-        if len(liste):
-            f.write ( "<h2>" + title + "</h2>" )
-            for s in liste:
-                if s.find(":") >= 0:
-                    f.write ( "<br/>" + s )
-                else:
-                    f.write ( s + ", " )
-
-    def dump2html(self, f):
+    def dump2html(self, f, name):
+        global firstWrite
         if self.filtered or not self.rootDescription.hasContent():
             return
-        f.write ( "<h3>" + self.type + \
-            " " + self.subType + \
-            " " + self.gender + "</h3>" )
-        self.dump2htmlImage(f)
+        name = str(name).lower()
+        unaccentedName = unidecode.unidecode(unicode(name,"utf-8"))
+        f.write ( "\t<definition val=\"" + name + "\"" + " val2=\"" + unaccentedName + "\">\n" )
+        f.write ("\t\t<nature><![CDATA[<i><b>" + self.type + " " + self.gender + "</i></b>]]></nature>\n")
+        f.write("\t\t<def><![CDATA[")
+        #self.dump2htmlImage(f)
         self.rootDescription.dump2html(f)
-
-        #self.dump2htmlItem(f, u"Catégories", self.category)
+        firstWrite = True
+        f.write("]]></def>\n")
+        f.write ( "\t</definition>\n" )
 
 class Word:
 
@@ -195,13 +196,11 @@ class Word:
         self.definition.append(definition)
 
     def dump2html(self, f):
-        f.write ( "<hr/>" )
-        f.write ( "<h1>" + self.name + "</h1>" )
         if not self.definition:
             f.write ( "<h2>ERROR: NO DEFINITION</h2>" )
             return
         for d in self.definition:
-            d.dump2html(f)
+            d.dump2html(f, self.name)
 
 
 class Wiktio:
@@ -230,30 +229,28 @@ class Wiktio:
         self.words.sort(key=lambda word: word.name.lower())
 
     def dumpHtmlHeader(self, f):
-        f.write ( """
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="fr" dir="ltr">
-<head>
-<title>Mini - Wiktionnaire</title>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        with open(f, 'a+', 0) as f:
+            f.write ( """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<root>
 """)
 
     def dumpHtmlFooter(self, f):
-        f.write ("""
-</head>
+        with open(f, 'a+', 0) as f:
+            f.write ("""
+</root>
 """)
 
     # Creates a big HTML file, useful to debug
     def dump2html(self, file):
-        with open(file, 'w') as f:
-            self.dumpHtmlHeader(f)
+        with open(file, 'a+', 0) as f:
+        #    self.dumpHtmlHeader(f)
             self.sort()
             for w in self.words:
                 w.dump2html(f)
-            self.dumpHtmlFooter(f)
+           # self.dumpHtmlFooter(f)
 
     # Creates a static HTML site in the given directory
-    def dump2htmlSite(self, baseDir):
+''' def dump2htmlSite(self, baseDir):
         if not os.path.isdir(baseDir):
             print "ERROR: Directory '" + baseDir + "' does not exists."
             return
@@ -273,4 +270,4 @@ class Wiktio:
                     self.dumpHtmlFooter(f)
 
             self.dumpHtmlFooter(f_index)
-
+'''

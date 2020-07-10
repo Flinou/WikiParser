@@ -20,6 +20,7 @@
 from xml.sax import parse
 from xml.sax.handler import ContentHandler
 from wikimodele import *
+from wikimodelearray import *
 import sys
 import re
 import os
@@ -27,10 +28,17 @@ import os
 from optparse import OptionParser
 
 import wiktio
+import timeit
 from wiktio import Wiktio
 
+stop = None 
+start = None
+stopstart = None
+startstart = None
+found = 0
+notfound = 0
 compteur = 0
-compteurMax = 11
+compteurMax = 0 
 debug = False
 toAdd = False
 # define Python user-defined exceptions
@@ -62,6 +70,13 @@ class WikiHandler(ContentHandler):
         self.lilevel = 0
 
     def startElement(self, name, attrs):
+        global stopstart
+        global startstart
+        if startstart is not None:
+            stopstart = timeit.default_timer()
+            #print('Time entre element : ', stopstart - startstart)
+        
+        startstart = timeit.default_timer()
         if name == 'page':
             self.isPageElement = True
         elif name == 'title':
@@ -70,6 +85,8 @@ class WikiHandler(ContentHandler):
         elif name == 'text':
             self.isTextElement = True
             self.textContent = ""
+        else:
+            return
 
         self.genders = {
             "{{m}}": u"masculin",
@@ -108,29 +125,31 @@ class WikiHandler(ContentHandler):
                                       ]
 
     def endElement(self, name):
+        global compteur
+        compteur = compteur + 1 
+        #if compteur % 10000 == 0:
+         #   print('Time total : ', compteur)
         if name == 'page':
-            global compteur
             self.isPageElement= False
-            if self.titleContent in self.searchWords:
-                word = self.parseText()
-                if word and word.name:
-                    #Remove words with space (expression for example). Keep words with accent thanks to re.UNICODE trick
-                    matching_titleContent_whitespace = re.match(".* .*",self.titleContent, re.UNICODE)
-                    #Remove words with digit in it
-                    matching_titleContent_number = re.match("\d",self.titleContent)
-                if len(self.titleContent) > 1 and matching_titleContent_whitespace is None and matching_titleContent_number is None and toAdd == True:
-                    self.wiktio.addWord(word)
-                    compteur = compteur + 1
-                    global compteurMax
-                    if compteur == compteurMax:
-                        raise EndOfParsing
+            word = self.parseText()
+            matching_titleContent_whitespace = "Notadded"
+            matching_titleContent_number = "Notadded" 
+            if word: 
+                #Remove words with space (expression for example). Keep words with accent thanks to re.UNICODE trick
+                matching_titleContent_whitespace = re.search(" ",self.titleContent, re.UNICODE)
+                #Remove words with digit in it
+                matching_titleContent_number = re.search("\d",self.titleContent)
+                matching_titleContent_points = re.search(":",self.titleContent)
+                if len(self.titleContent) > 1 and matching_titleContent_points is None and matching_titleContent_whitespace is None and matching_titleContent_number is None and toAdd == True:
+                    print self.titleContent
+                    self.wiktio = wiktio.Wiktio()
+               
             self.titleContent = ""
             self.textContent = ""
         elif name == 'title':
             self.isTitleElement= False
         elif name == 'text':
             self.isTextElement = False
-
     def characters (self, ch):
         if self.isTitleElement:
             self.titleContent += ch
@@ -200,9 +219,12 @@ class WikiHandler(ContentHandler):
     # numbered = True if this is a numbered list
     def wiki2xml(self, text, asText):
 
+        #Remove {{-}}, {{(}} and {{)}}
         text = re.sub(r"{{[-\)\(]}}", "", text)
+        #Remove pattern like {{word:word}}
         text = re.sub(r"\[\[\w+:\w+\]\]", "", text)
-        text = re.sub(r"{{\(\|(.*)}}", r"", text)
+        #Remove {{(|words}}
+        #text = re.sub(r"{{\(\|(.*)}}", r"", text)
         if text == "":
             return self.indents2xml(text, asText)
 
@@ -213,42 +235,60 @@ class WikiHandler(ContentHandler):
         text = re.sub(ur"{{w\|([^}]+)}}", ur"<i>\1</i>", text)
         #text = re.sub(ur"{{source\|([^}]+)}}", ur"- (\1)", text)
 #        text = re.sub(ur"{{source\|([^}]+)}}", ur"Source :", text)
-        for registreWiki in registres.keys():
-            text = re.sub(registreWiki, registres[registreWiki], text)
-        
-        for frequenceWiki in frequences.keys():
-            text = re.sub(frequenceWiki, frequences[frequenceWiki], text)
-        
-        for temporaliteWiki in temporalites.keys():
-            text = re.sub(temporaliteWiki, temporalites[temporaliteWiki], text)
+#        print text
+        if text.startswith("{{"):
 
-        for lexiqueWiki in lexiques:
-            text = re.sub(lexiqueWiki, lexiques[lexiqueWiki], text)
+            #Find all patterns like : {{some text}} in line
+            matchings = re.findall(ur"{{[\w\W]+?}}", text)
+            for match in matchings:
+                #Check if pattern is like {{text| or {{text}} and if so, save text (which is a precision for definition) 
+                precision = re.match("{{([\w\W]+?)(\||}})", match)
+                if precision and precision.group(1):
+                    precisionVal = precision.group(1)
+                    #check if the precision is worth adding in definition
+                    if precisionVal in precisionsAllowed.keys():
+                        text = text.replace(match,precisionsAllowed[precisionVal]) 
+            '''for registreWiki in registres.keys():
+                text = re.sub(registreWiki, registres[registreWiki], text)
+                    
+            for frequenceWiki in frequences.keys():
+                text = re.sub(frequenceWiki, frequences[frequenceWiki], text)
             
-        for regionWiki in regions:
-            text = re.sub(regionWiki, regions[regionWiki], text)
+            for temporaliteWiki in temporalites.keys():
+                text = re.sub(temporaliteWiki, temporalites[temporaliteWiki], text)
 
-        for paysWiki in pays:
-            text = re.sub(paysWiki, pays[paysWiki], text)
+            #for lexiqueWiki in lexiques:
+             #   text = re.sub(lexiqueWiki, lexiques[lexiqueWiki], text)
+            for regex, sub in lexiques:
+                text = re.sub(regex, sub, text)
+                
+            for regionWiki in regions:
+                text = re.sub(regionWiki, regions[regionWiki], text)
 
-        for relationWiki in relations:
-            text = re.sub(relationWiki, relations[relationWiki], text)
-        
-        for connotationWiki in connotations:
-            text = re.sub(connotationWiki, connotations[connotationWiki], text)
+            for paysWiki in pays:
+                text = re.sub(paysWiki, pays[paysWiki], text)
 
-        for argotWiki in argots:
-            text = re.sub(argotWiki, argots[argotWiki], text)
+            for relationWiki in relations:
+                text = re.sub(relationWiki, relations[relationWiki], text)
+            
+            for connotationWiki in connotations:
+                text = re.sub(connotationWiki, connotations[connotationWiki], text)
 
-        for genreWiki in genres:
-            text = re.sub(genreWiki, genres[genreWiki], text)
-        
-        for contrainteWiki in contraintes:
-            text = re.sub(contrainteWiki, contraintes[contrainteWiki], text)
+            for argotWiki in argots:
+                text = re.sub(argotWiki, argots[argotWiki], text)
 
-        for diaintegrationWiki in diaintegrations:
-            text = re.sub(diaintegrationWiki, diaintegrations[diaintegrationWiki], text)
+            for genreWiki in genres:
+                text = re.sub(genreWiki, genres[genreWiki], text)
+            
+            for contrainteWiki in contraintes:
+                text = re.sub(contrainteWiki, contraintes[contrainteWiki], text)
+
+            for diaintegrationWiki in diaintegrations:
+                text = re.sub(diaintegrationWiki, diaintegrations[diaintegrationWiki], text)
+            '''    
         # Remove all unrecognized wiki tags
+        #text = re.sub(r"{{[^}]+}}", "", text)
+        text = re.sub(r"{{[\w\W]*}}$", "", text)
         text = re.sub(r"{{[^}]+}}", "", text)
 
         # bold
@@ -258,7 +298,7 @@ class WikiHandler(ContentHandler):
         variable = text
         
         #Get rid of Image
-        if text.startswith("[[Image") or text.startswith("[[Fichier") or text.startswith("="):
+        if text.startswith("[[Image") or text.startswith("[[Fichier") or text.startswith("=") or text.startswith("[[File"):
             text=""
             return [text, level, numbered]
 
@@ -278,7 +318,8 @@ class WikiHandler(ContentHandler):
 
     # Wikipedia text content is interpreted and transformed in XML
     def parseText(self):
-        print "Processing " + self.titleContent
+        value = 0
+       # print "Processing " + self.titleContent
         inWord = wiktio.Word()
 
         global toAdd
@@ -292,6 +333,8 @@ class WikiHandler(ContentHandler):
 
         for textSplitted in re.split(r"(=== {{S\|.*\|fr\|{0,1}[\w\W]*?}} ===[\w\W]*?)=== {{S", self.textContent, flags=re.M|re.UNICODE):
 
+            #print textSplitted
+            firstLine = True
             #self.textContent = text
             # Append an end of text marker, it forces the end of the definition
             textSplitted += "\n{{-EndOfTest-}}"
@@ -318,8 +361,13 @@ class WikiHandler(ContentHandler):
                 matching_word_nature = re.match(r"=== {{S\|([\w\W]*?)\|fr}} ===",l,re.UNICODE)
                 matching_word_nature_bis = re.match(r"=== {{S\|([\w\W]*?)\|fr\|.*}} ===",l,re.UNICODE)
                 # Determine the section of the document we are in
+                
+                if firstLine and not matching_word_nature and not matching_word_nature_bis:
+                    break
 
-                if l.startswith("'''" + self.titleContent + "'''"):
+                firstLine = False
+                    
+                if l.startswith("'''" + self.titleContent + "'''") or l.startswith("'''" + self.titleContent + " '''"):
                     for wt in self.genders.keys():
                         if re.search(wt, l):
                             gender = self.genders[wt]
@@ -334,10 +382,12 @@ class WikiHandler(ContentHandler):
                     definition.addDescription("", 0, False)
                 elif matching_word_nature:
                     if "flexion" not in l and matching_word_nature.group(1) in typesAllowed:
+                    #if matching_word_nature.group(1) in typesAllowed:
                         definition.setType(matching_word_nature.group(1)) 
                         state=Wiktio.DEFINITION
                         toAdd = True
                 elif matching_word_nature_bis:
+                    #if matching_word_nature_bis.group(1) in typesAllowed:
                     if "flexion" not in l and matching_word_nature_bis.group(1) in typesAllowed:
                         definition.setType(matching_word_nature_bis.group(1)) 
                         state=Wiktio.DEFINITION
@@ -352,6 +402,7 @@ class WikiHandler(ContentHandler):
                         definition = wiktio.Definition()
                         inWord.addDefinition(definition)
                     state = Wiktio.SKIP
+                
 
                 
 
@@ -407,6 +458,7 @@ class WikiHandler(ContentHandler):
                     continue
 
                 if state == Wiktio.DEFINITION:
+                    #POSE PROBLEME TRES LONG
                     [text, level, numbered] = self.wiki2xml(l, False)
                     definition.addDescription(text, level, numbered)
                 else:
@@ -449,17 +501,21 @@ if options.site:
 # Import the list of words
 f = open(wordsFile, "r")
 words = []
-words = [w.rstrip() for w in f.readlines()]
+#words = [w.rstrip() for w in f.readlines()]
+#chunks = [words[x:x+5000] for x in xrange(0, len(words), 5000)]
+
 f.close()
 
 _wiktio = wiktio.Wiktio()
 
 try:
-    parse(wikiFile, WikiHandler(words, 'fr', _wiktio, options.verbose))
-except:
-    print "Fin du parsing"
+   # for wordas in chunks:
+#    starta = timeit.default_timer()
+    #print len(words)
+    parse(wikiFile, WikiHandler(set(words), 'fr', _wiktio, options.verbose))
+except Exception as e: print(e)
 
-if options.site:
-    _wiktio.dump2htmlSite(options.output)
-else:
-    _wiktio.dump2html(options.output)
+#if options.site:
+    #_wiktio.dump2htmlSite(options.output)
+#else:
+    #_wiktio.dump2html(options.output)
