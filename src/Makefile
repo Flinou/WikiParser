@@ -1,0 +1,2 @@
+test:
+	../test/nonRegression.py

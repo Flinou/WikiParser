@@ -35,6 +35,7 @@ from splitFile import splitDicoFile
 from sortFile import sortDicoFile
 
 compteur = 0
+cpt = 0
 debug = False
 toAdd = False
 # define Python user-defined exceptions
@@ -89,6 +90,7 @@ class WikiHandler(ContentHandler):
 
     def endElement(self, name):
         global compteur
+        global cpt
         compteur = compteur + 1 
         if compteur % 10000 == 0:
             print "Element " + str(compteur) + " / 6600000"
@@ -110,6 +112,9 @@ class WikiHandler(ContentHandler):
                     self.wiktio.addWord(word)
                     self.wiktio.dump2html(self.output)
                     self.wiktio = wiktio.Wiktio()
+                cpt = cpt + 1 
+                if cpt == 999:
+                    raise EndOfParsing
             self.titleContent = ""
             self.textContent = ""
         elif name == 'title':
@@ -224,11 +229,6 @@ class WikiHandler(ContentHandler):
             self.previousLineExample=True
         elif isComment and len(text)>0:
             self.previousLineExample=True
-            #Add \n for Android display needs
-            #text = text + "INS_NL_AFT"
-        #elif self.previousLineExample == False and len(text)>0:
-         #   text = text + "INS_NL_BEF"
-          #  self.previousLineExample = False
         elif len(text) == 0 or str(text).isspace():
             self.previousLineExample = False
         else:
@@ -351,7 +351,7 @@ class WikiHandler(ContentHandler):
                     definition.add(Wiktio.CATEGORY, text)
                     continue
 
-                if state == Wiktio.DEFINITION and startWithHash:
+                if state == Wiktio.DEFINITION and startWithHash and not l.isspace():
                     [text, level, numbered] = self.wiki2xml(l, False)
                     definition.addDescription(text, level, numbered)
                 elif not startWithHash:
@@ -402,8 +402,9 @@ except Exception as e: print(e)
 #os.rename(outputSorted, output)
 #splitDicoFile(output, 50000)
 #os.remove(output)
-'''with open(output, 'a+', 0) as dictionnary:
+with open(output, 'a+', 0) as dictionnary:
     dictionnary.write("</root>")
+'''
 def sortchildrenby(parent, attr):
     parent[:] = sorted(parent, key=lambda child: child.get(attr))
 
