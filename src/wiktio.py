@@ -159,7 +159,7 @@ class Definition:
         elif atype == Wiktio.CATEGORY:
             self.category.append(text)
         else:
-            print "!!ERROR!!: Type not supported"
+            print("!!ERROR!!: Type not supported")
 
     def dump2htmlImage(self, f):
         if self.image:
@@ -173,7 +173,7 @@ class Definition:
         if self.filtered or not self.rootDescription.hasContent():
             return
         name = str(name).lower()
-        unaccentedName = unidecode.unidecode(unicode(name,"utf-8"))
+        unaccentedName = unidecode.unidecode(str(name))
         f.write ( "\t<definition val=\"" + name + "\"" + " val2=\"" + unaccentedName + "\">\n" )
         f.write ("\t\t<nature><![CDATA[<i><b>" + self.type + " " + self.gender + "</i></b>]]></nature>\n")
         f.write("\t\t<def><![CDATA[")
@@ -214,7 +214,7 @@ class Wiktio:
      PRON,
      IMAGE,
      CATEGORY,
-     SKIP) = range(0, 10)
+     SKIP) = list(range(0, 10))
 
     def __init__ (self):
         self.words = []
@@ -229,20 +229,20 @@ class Wiktio:
         self.words.sort(key=lambda word: word.name.lower())
 
     def dumpHtmlHeader(self, f):
-        with open(f, 'a+', 0) as f:
+        with open(f, 'a+') as f:
             f.write ( """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <root>
 """)
 
     def dumpHtmlFooter(self, f):
-        with open(f, 'a+', 0) as f:
+        with open(f, 'a+') as f:
             f.write ("""
 </root>
 """)
 
     # Creates a big HTML file, useful to debug
     def dump2html(self, file):
-        with open(file, 'a+', 0) as f:
+        with open(file, 'a+') as f:
         #    self.dumpHtmlHeader(f)
             self.sort()
             for w in self.words:

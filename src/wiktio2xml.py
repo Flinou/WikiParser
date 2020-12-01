@@ -33,6 +33,7 @@ import timeit
 from wiktio import Wiktio
 from splitFile import splitDicoFile
 from sortFile import sortDicoFile
+import importlib
 
 compteur = 0
 cpt = 0
@@ -61,10 +62,10 @@ class WikiHandler(ContentHandler):
         self.isPageElement = False
 
         self.isTitleElement = False
-        self.titleContent = u""
+        self.titleContent = ""
 
         self.isTextElement = False
-        self.textContent = u""
+        self.textContent = ""
         self.previousLineExample = False
 
         self.lilevel = 0
@@ -83,9 +84,9 @@ class WikiHandler(ContentHandler):
             return
 
         self.genders = {
-            "{{m}}": u"masculin",
-            "{{f}}": u"féminin",
-            "{{mf}}": u"masculin et féminin"
+            "{{m}}": "masculin",
+            "{{f}}": "féminin",
+            "{{mf}}": "masculin et féminin"
             }
 
     def endElement(self, name):
@@ -93,7 +94,7 @@ class WikiHandler(ContentHandler):
         global cpt
         compteur = compteur + 1 
         if compteur % 10000 == 0:
-            print "Element " + str(compteur) + " / 6600000"
+            print("Element " + str(compteur) + " / 6600000")
         if name == 'page':
             self.isPageElement= False
             #make self.titleContent a plain string for accent comparison (accented word are not found in set if not used)
@@ -113,7 +114,7 @@ class WikiHandler(ContentHandler):
                     self.wiktio.dump2html(self.output)
                     self.wiktio = wiktio.Wiktio()
                 cpt = cpt + 1 
-                if cpt == 999:
+                if cpt == 3:
                     raise EndOfParsing
             self.titleContent = ""
             self.textContent = ""
@@ -178,7 +179,7 @@ class WikiHandler(ContentHandler):
             return self.indents2xml(text, asText)
 
         [text, level, numbered] = self.indents2xml(text, asText)
-        text = re.sub(ur"{{w\|([^}]+)}}", ur"<i>\1</i>", text)
+        text = re.sub(r"{{w\|([^}]+)}}", r"<i>\1</i>", text)
 
         isComment = re.match("^''[^']", text) or re.match("^'''''[^']", text) or re.match("^{{[\W\w]*}}''[^']",text)
         
@@ -186,19 +187,23 @@ class WikiHandler(ContentHandler):
         if text.startswith("{{"):
 
             #Find all patterns like : {{some text}} in line
-            matchings = re.findall(ur"{{[\w\W]+?}}", text)
+            matchings = re.findall(r"{{[\w\W]+?}}", text)
             for match in matchings:
                 #Check if pattern is like {{text| or {{text}} and if so, save text (which is a precision for definition) 
                 precision = re.match("{{([\w\W]+?)(\||}})", match)
                 if precision and precision.group(1):
                     precisionVal = precision.group(1)
                     #check if the precision is worth adding in definition
-                    if precisionVal in precisionsAllowed.keys():
+                    if precisionVal in list(precisionsAllowed.keys()):
                         text = text.replace(match,precisionsAllowed[precisionVal]) 
         # Remove all unrecognized wiki tags
         #text = re.sub(r"{{[^}]+}}", "", text)
         text = re.sub(r"{{[\w\W]*}}$", "", text)
-        text = re.sub(r"{{[^}]+}}", "", text)
+        varianteOrtho = re.match(r"{{variante ortho de\|([\w\W]+?)}}", text)
+        if varianteOrtho and varianteOrtho.group(1):
+            text = "Variante orthographique du mot " + varianteOrtho.group(1) +"."
+        else:
+            text = re.sub(r"{{[^}]+}}", "", text)
 
         # bold
         text = self.quote2xml("'''", "<b>", "</b>", text)
@@ -253,7 +258,6 @@ class WikiHandler(ContentHandler):
         gender = ""
 
         for textSplitted in re.split(r"(=== {{S\|.*\|fr\|{0,1}[\w\W]*?}} ===[\w\W]*?)=== {{S", self.textContent, flags=re.M|re.UNICODE):
-
             firstLine = True
             # Append an end of text marker, it forces the end of the definition
             textSplitted += "\n{{-EndOfTest-}}"
@@ -265,6 +269,7 @@ class WikiHandler(ContentHandler):
             inWord.addDefinition(definition)
             concat = ""
             for l in textSplitted.splitlines():
+                print(l)
                 startWithHash = False
                 if l.startswith("#"):
                     startWithHash = True
@@ -272,6 +277,7 @@ class WikiHandler(ContentHandler):
                 concat = ""
                 next = False
 
+                #Regarder le mot taf dans le wiktionnaire pour comprendre
                 if re.search(r"<[^>]+$", l):
                     # Wiki uses a trick to format text area by ending in uncomplete
                     # html tags. In this case, we concat this line with the next one
@@ -289,7 +295,7 @@ class WikiHandler(ContentHandler):
                 firstLine = False
                     
                 if l.startswith("'''" + self.titleContent + "'''") or l.startswith("'''" + self.titleContent + " '''"):
-                    for wt in self.genders.keys():
+                    for wt in list(self.genders.keys()):
                         if re.search(wt, l):
                             gender = self.genders[wt]
                             definition.setGender(gender)
@@ -310,21 +316,13 @@ class WikiHandler(ContentHandler):
                         definition.setType(matching_word_nature_bis.group(1).capitalize()) 
                         state=Wiktio.DEFINITION
                         toAdd = True
-                elif re.match(r"==.*{{.*}}.*==",l):
-                    state=Wiktio.SKIP
+                #Pourquoi cette regexp ? Peutetre pour flexion (Regarder eclairci dans wiktionnaire)
                 elif re.search(r"{{-.*-.*}}", l):
                     if not definition.rootDescription.isEmpty():
                         filterIndent = ""
                         definition = wiktio.Definition()
                         inWord.addDefinition(definition)
                     state = Wiktio.SKIP
-                
-
-                # Are we still in the correct language section
-                # We assume the correct language is ahead
-                lang = re.match(r"==[ ]+{{=([a-z]+)=}}[ ]+==", l)
-                if lang and lang.group(1) != None and lang.group(1) != self.locale:
-                    return inWord
 
                 if state == Wiktio.SKIP:
                     continue
@@ -346,8 +344,8 @@ class WikiHandler(ContentHandler):
                     continue
 
                 # Categories
-                if re.match(ur"\[\[Catégorie:", l):
-                    text = re.sub(ur"\[\[Catégorie:([^|}\]]+).*", r"\1", l)
+                if re.match(r"\[\[Catégorie:", l):
+                    text = re.sub(r"\[\[Catégorie:([^|}\]]+).*", r"\1", l)
                     definition.add(Wiktio.CATEGORY, text)
                     continue
 
@@ -363,8 +361,8 @@ class WikiHandler(ContentHandler):
         return inWord
 
 # Set UTF-8 stdout in case of the user piping our output
-reload(sys)
-sys.setdefaultencoding('utf-8')
+importlib.reload(sys)
+#sys.setdefaultencoding('utf-8')
 
 usage = "usage: %prog [options] wiktionary_dump.xml word_list.txt"
 parser = OptionParser(usage=usage)
@@ -402,7 +400,7 @@ except Exception as e: print(e)
 #os.rename(outputSorted, output)
 #splitDicoFile(output, 50000)
 #os.remove(output)
-with open(output, 'a+', 0) as dictionnary:
+with open(output, 'a+') as dictionnary:
     dictionnary.write("</root>")
 '''
 def sortchildrenby(parent, attr):
