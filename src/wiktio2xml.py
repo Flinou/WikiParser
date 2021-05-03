@@ -49,6 +49,7 @@ class EndOfParsing(Error):
     pass
 
 class WikiHandler(ContentHandler):
+    
 
     def __init__ (self, searchWords, locale, _wiktio, output):
  
@@ -114,7 +115,7 @@ class WikiHandler(ContentHandler):
                     self.wiktio.dump2html(self.output)
                     self.wiktio = wiktio.Wiktio()
                 cpt = cpt + 1 
-                if cpt == 3:
+                if cpt == 10000:
                     raise EndOfParsing
             self.titleContent = ""
             self.textContent = ""
@@ -167,7 +168,7 @@ class WikiHandler(ContentHandler):
     # Replace standard Wiki tags to XML
     # Returns a list [text, level, numbered]
     # numbered = True if this is a numbered list
-    def wiki2xml(self, text, asText):
+    def wiki2xml(self, text, asText, state):
         #Remove {{-}}, {{(}} and {{)}}
         text = re.sub(r"{{[-\)\(]}}", "", text)
         #Remove pattern like {{word:word}}
@@ -229,6 +230,8 @@ class WikiHandler(ContentHandler):
                 text = text[:start] + text[pipe+1:]
                 text = text.replace("]]", "", 1)
         
+        if state == Wiktio.SYNONYME:
+            return [text,level, numbered]
         if isComment and self.previousLineExample:
             text=""
             self.previousLineExample=True
@@ -242,12 +245,60 @@ class WikiHandler(ContentHandler):
 
         return [text, level, numbered]
 
+
+    def checkFrenchSection(self, line, isFrenchSection):
+        matchingLangSection = re.match(r"==( ?){{langue\|(.*)}}( ?)==",line,re.UNICODE)
+        if matchingLangSection:
+            if matchingLangSection.group(2) == "fr":
+                return True
+            else:
+                return False
+        else:
+            return isFrenchSection 
+
+    def synonymStringCreation(self, synonym, title, firstTitle):
+        if firstTitle:
+            synonym += title + " "
+        else:
+            synonym = re.sub(r', $','',synonym) 
+            synonym += "<br>" + title + " "
+        return synonym
+
+    
+    def handleSynonyms(self,text):
+        synonym = ""
+        firstTitle = True
+        for line in text.splitlines():
+            #Title are informations about register for use of synonyms 
+            #Titles in synonyms section can be like '''Militaire''' or ; '''Militaire :'''
+            matchingTitle = re.match(r";{0,1} *'{2,3}(.*?)\W{0,1}\:{0,1}'{2,3}", line, re.UNICODE)
+            #Other title in synonym are like {{|Appareil portatif}}
+            matchingOtherTitle = re.match(r"{{\|(.*)}}", line, re.UNICODE)
+            if matchingTitle and not line.startswith("*"):
+                title = "(" + matchingTitle.group(1) +")"
+                synonym = self.synonymStringCreation(synonym, title, firstTitle)
+                firstTitle = False
+            elif matchingOtherTitle and not line.startswith("*"):
+                title = "(" + matchingOtherTitle.group(1) +")"
+                synonym = self.synonymStringCreation(synonym, title, firstTitle)
+                firstTitle = False
+
+            if line.startswith("*"):
+                currentSyn = re.match(r".* \[\[(.*)\]\]", line, re.UNICODE)
+                if currentSyn:
+                    synonym += currentSyn.group(1) + ", "
+
+        synonym = re.sub(r', $','',synonym) 
+        return synonym
+
+
+
     # Wikipedia text content is interpreted and transformed in XML
     def parseText(self):
         value = 0
        # print "Processing " + self.titleContent
         inWord = wiktio.Word()
-
+        frenchSection = False
         global toAdd
         toAdd = False
         state = Wiktio.SKIP
@@ -256,20 +307,27 @@ class WikiHandler(ContentHandler):
         wordSubType = ""
         filterIndent = ""
         gender = ""
-
-        for textSplitted in re.split(r"(=== {{S\|.*\|fr\|{0,1}[\w\W]*?}} ===[\w\W]*?)=== {{S", self.textContent, flags=re.M|re.UNICODE):
+        self.textContent=re.sub("(={2,} {)","PATTERN_TO_SPLIT_BY" + r"\1",self.textContent)
+        #testSub = self.textContent
+        #testSub=re.sub("(={3,} {)","PATTERN_TO_SPLIT_BY" + r"\1",testSub)
+        #for textSplitted in re.split(r"(=== {{S\|.*\|fr\|{0,1}[\w\W]*?}} ===[\w\W]*?)=== {{S", self.textContent, flags=re.M|re.UNICODE):
+        global currentDefinition
+        for textSplitted in re.split(r"PATTERN_TO_SPLIT_BY", self.textContent, flags=re.M|re.UNICODE):
             firstLine = True
+
             # Append an end of text marker, it forces the end of the definition
             textSplitted += "\n{{-EndOfTest-}}"
 
             # Remove html comment (multilines)
             textSplitted = re.sub(r"<!--[^>]*-->", "",textSplitted, re.M)
-
             definition = wiktio.Definition()
             inWord.addDefinition(definition)
             concat = ""
             for l in textSplitted.splitlines():
-                print(l)
+                #Check if in French part of definition, if not break
+                frenchSection = self.checkFrenchSection(l, frenchSection)
+                if not frenchSection:
+                    break
                 startWithHash = False
                 if l.startswith("#"):
                     startWithHash = True
@@ -287,11 +345,18 @@ class WikiHandler(ContentHandler):
                 #Retrieve nature of the word in line like === {{S|wordNature|fr(|.*optional)}} ===
                 matching_word_nature = re.match(r"=== {{S\|([\w\W]*?)\|fr}} ===",l,re.UNICODE)
                 matching_word_nature_bis = re.match(r"=== {{S\|([\w\W]*?)\|fr\|.*}} ===",l,re.UNICODE)
+                matching_word_nature_bis = re.match(r"=== {{S\|([\w\W]*?)\|fr\|.*}} ===",l,re.UNICODE)
+                matching_synonyme = re.match(r"==== {{S\|synonymes}} ====",l,re.UNICODE)
+
                 # Determine the section of the document we are in
                 
-                if firstLine and not matching_word_nature and not matching_word_nature_bis:
+                if firstLine and not matching_word_nature and not matching_word_nature_bis and not matching_synonyme:
                     break
 
+                if matching_word_nature or matching_word_nature_bis:
+                    currentDefinition = definition
+                elif matching_synonyme:
+                    definition = currentDefinition
                 firstLine = False
                     
                 if l.startswith("'''" + self.titleContent + "'''") or l.startswith("'''" + self.titleContent + " '''"):
@@ -316,6 +381,11 @@ class WikiHandler(ContentHandler):
                         definition.setType(matching_word_nature_bis.group(1).capitalize()) 
                         state=Wiktio.DEFINITION
                         toAdd = True
+                elif matching_synonyme:
+                    state=Wiktio.SYNONYME
+                    synonyms = self.handleSynonyms(textSplitted)
+                    definition.add(state, synonyms)
+                    break
                 #Pourquoi cette regexp ? Peutetre pour flexion (Regarder eclairci dans wiktionnaire)
                 elif re.search(r"{{-.*-.*}}", l):
                     if not definition.rootDescription.isEmpty():
@@ -350,13 +420,16 @@ class WikiHandler(ContentHandler):
                     continue
 
                 if state == Wiktio.DEFINITION and startWithHash and not l.isspace():
-                    [text, level, numbered] = self.wiki2xml(l, False)
+                    [text, level, numbered] = self.wiki2xml(l, False, state)
                     definition.addDescription(text, level, numbered)
+                elif state == Wiktio.SYNONYME:
+                    [text, level, numbered] = self.wiki2xml(l, False, state)
+                    definition.add(state, text)
                 elif not startWithHash:
                     continue
                 else:
                     if len(l) > 0:
-                        definition.add(state, self.wiki2xml(l, True)[0])
+                        definition.add(state, self.wiki2xml(l, True)[0], state)
 
         return inWord
 
@@ -396,14 +469,14 @@ try:
     parse(wikiFile, WikiHandler(wordslist, 'fr', _wiktio, output))
 except Exception as e: print(e)
 
-#sortDicoFile(output, outputSorted)
-#os.rename(outputSorted, output)
-#splitDicoFile(output, 50000)
-#os.remove(output)
-with open(output, 'a+') as dictionnary:
-    dictionnary.write("</root>")
-'''
-def sortchildrenby(parent, attr):
+sortDicoFile(output, outputSorted)
+os.rename(outputSorted, output)
+splitDicoFile(output, 15000)
+os.remove(output)
+#with open(output, 'a+') as dictionnary:
+#    dictionnary.write("</root>")
+
+'''def sortchildrenby(parent, attr):
     parent[:] = sorted(parent, key=lambda child: child.get(attr))
 
 parser = lxml.etree.XMLParser(strip_cdata=False)
