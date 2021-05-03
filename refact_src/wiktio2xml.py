@@ -115,14 +115,10 @@ class WikiHandler(ContentHandler):
                     self.wiktio.dump2html(self.output)
                     self.wiktio = wiktio.Wiktio()
                 cpt = cpt + 1 
-                if cpt == 998:
+                if cpt == 10000:
                     raise EndOfParsing
             self.titleContent = ""
             self.textContent = ""
-        elif name == 'title':
-            self.isTitleElement= False
-        elif name == 'text':
-            self.isTextElement = False
     def characters (self, ch):
         if self.isTitleElement:
             self.titleContent += ch
@@ -451,7 +447,7 @@ except Exception as e: print(e)
 
 sortDicoFile(output, outputSorted)
 os.rename(outputSorted, output)
-splitDicoFile(output, 15000)
+splitDicoFile(output, 150000)
 os.remove(output)
 #with open(output, 'a+') as dictionnary:
 #    dictionnary.write("</root>")
