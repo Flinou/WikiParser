@@ -409,14 +409,7 @@ class WikiHandler(ContentHandler):
                     else:
                         filterIndent = ""
 
-
                 if next:
-                    continue
-
-                # Categories
-                if re.match(r"\[\[Catégorie:", l):
-                    text = re.sub(r"\[\[Catégorie:([^|}\]]+).*", r"\1", l)
-                    definition.add(Wiktio.CATEGORY, text)
                     continue
 
                 if state == Wiktio.DEFINITION and startWithHash and not l.isspace():
