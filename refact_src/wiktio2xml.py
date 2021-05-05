@@ -24,38 +24,42 @@ from wikimodelearray import *
 import sys
 import re
 import os
-import lxml.etree
-
-from optparse import OptionParser
 
 import wiktio
-import timeit
 from wiktio import Wiktio
 from splitFile import splitDicoFile
 from sortFile import sortDicoFile
 import importlib
 
-compteur = 0
+word_rank = 0
 cpt = 0
 debug = False
 toAdd = False
+
+
 # define Python user-defined exceptions
 class Error(Exception):
     """Base class for other exceptions"""
     pass
 
+
 class EndOfParsing(Error):
     """Raised when parsing is over"""
     pass
 
-class WikiHandler(ContentHandler):
-    
 
-    def __init__ (self, searchWords, locale, _wiktio, output):
- 
-        self.searchWords= searchWords;
-        self.output = output
-        self.origin = output
+class WikiHandler(ContentHandler):
+
+    def __init__(self, search_words, locale, _wiktio, output_file):
+
+        self.genders = {
+            "{{m}}": "masculin",
+            "{{f}}": "féminin",
+            "{{mf}}": "masculin et féminin"
+        }
+        self.searchWords = search_words
+        self.output = output_file
+        self.origin = output_file
         self.locale = locale
         self.wiktio = _wiktio
         self.cpt = 0
@@ -69,7 +73,7 @@ class WikiHandler(ContentHandler):
         self.textContent = ""
         self.previousLineExample = False
 
-        self.lilevel = 0
+        self.little_level = 0
         self.wiktio.dumpHtmlHeader(self.output)
 
     def startElement(self, name, attrs):
@@ -84,83 +88,77 @@ class WikiHandler(ContentHandler):
         else:
             return
 
-        self.genders = {
-            "{{m}}": "masculin",
-            "{{f}}": "féminin",
-            "{{mf}}": "masculin et féminin"
-            }
-
     def endElement(self, name):
-        global compteur
+        global word_rank
         global cpt
-        compteur = compteur + 1 
-        if compteur % 10000 == 0:
-            print("Element " + str(compteur) + " / 6600000")
+        word_rank = word_rank + 1
+        if word_rank % 10000 == 0:
+            print("Element " + str(word_rank) + " / 6600000")
         if name == 'page':
-            self.isPageElement= False
-            #make self.titleContent a plain string for accent comparison (accented word are not found in set if not used)
+            self.isPageElement = False
+            # Make self.titleContent a plain string for accent comparison (accented word not found in set if not used)
             self.titleContent = str(self.titleContent)
             if self.titleContent in self.searchWords:
                 self.searchWords.remove(self.titleContent)
-                word = self.parseText()
-                matching_titleContent_whitespace = "Notadded"
-                matching_titleContent_number = "Notadded" 
+                word = self.parse_text()
+                match_title_ctnt_space = "Notadded"
+                match_title_ctnt_nmbr = "Notadded"
                 if word and word.name:
-                    #Remove words with space (expression for example). Keep words with accent thanks to re.UNICODE trick
-                    matching_titleContent_whitespace = re.match(".* .*",self.titleContent, re.UNICODE)
-                    #Remove words with digit in it
-                    matching_titleContent_number = re.match("\d",self.titleContent)
-                if len(self.titleContent) > 1 and matching_titleContent_whitespace is None and matching_titleContent_number is None and toAdd == True:
+                    # Remove words with space (expression for ex). Keep words with accent thanks to re.UNICODE trick
+                    match_title_ctnt_space = re.match(".* .*", self.titleContent, re.UNICODE)
+                    # Remove words with digit in it
+                    match_title_ctnt_nmbr = re.match("\d", self.titleContent)
+                if len(self.titleContent) > 1 and match_title_ctnt_space is None and match_title_ctnt_nmbr is None and toAdd == True:
                     self.wiktio.addWord(word)
                     self.wiktio.dump2html(self.output)
                     self.wiktio = wiktio.Wiktio()
-                cpt = cpt + 1 
-                if cpt == 998:
+                cpt = cpt + 1
+                if cpt == 10000:
                     raise EndOfParsing
             self.titleContent = ""
             self.textContent = ""
         elif name == 'title':
-            self.isTitleElement= False
+            self.isTitleElement = False
         elif name == 'text':
             self.isTextElement = False
-    def characters (self, ch):
+
+    def characters(self, ch):
         if self.isTitleElement:
             self.titleContent += ch
         elif self.isTextElement:
             self.textContent += ch
 
-
-# Returns a list [text, level, numbered]
-#
-    def indents2xml(self, text, asText):
+    # Returns a list [text, level, numbered]
+    def indents2xml(self, text, as_text):
         numbered = False
         result = re.search(r"^[ ]*[*#:;]+[ ]*", text)
         if not result:
-            self.lilevel = 0
-            return [text, self.lilevel, numbered]
+            self.little_level = 0
+            return [text, self.little_level, numbered]
 
         indent = result.group(0).rstrip()
-        self.lilevel = len(indent)
+        self.little_level = len(indent)
         text = text[result.end():]
 
-        if asText:
-            return [text, self.lilevel, numbered]
+        if as_text:
+            return [text, self.little_level, numbered]
 
         if indent[-1:] == "#":
             numbered = True
 
-        return [text, self.lilevel, numbered]
+        return [text, self.little_level, numbered]
 
     # Replaces '''xx''' and ''xx'' from the given text
     # with openXml xx closeXml
-    def quote2xml(self, quote, openXml, closeXml, text):
+    @staticmethod
+    def quote2xml(quote, open_xml, close_xml, text):
         index = 0
         while index >= 0:
             index = text.find(quote)
             index2 = text.find(quote, index + len(quote))
-            if index >= 0 and index2 >=0:
-                text = text.replace(quote, openXml, 1)
-                text = text.replace(quote, closeXml, 1)
+            if index >= 0 and index2 >= 0:
+                text = text.replace(quote, open_xml, 1)
+                text = text.replace(quote, close_xml, 1)
             else:
                 return text
         return text
@@ -168,56 +166,50 @@ class WikiHandler(ContentHandler):
     # Replace standard Wiki tags to XML
     # Returns a list [text, level, numbered]
     # numbered = True if this is a numbered list
-    def wiki2xml(self, text, asText, state):
-        #Remove {{-}}, {{(}} and {{)}}
+    def wiki2xml(self, text, as_text, state):
+        # Remove {{-}}, {{(}} and {{)}}
         text = re.sub(r"{{[-\)\(]}}", "", text)
-        #Remove pattern like {{word:word}}
+        # Remove pattern like {{word:word}}
         text = re.sub(r"\[\[\w+:\w+\]\]", "", text)
-        #Remove ref markup 
+        # Remove ref markup
         text = re.sub(r"<ref>[\w\W]*</ref>", "", text)
-        #text = re.sub(r"{{\(\|(.*)}}", r"", text)
         if text == "":
-            return self.indents2xml(text, asText)
+            return self.indents2xml(text, as_text)
 
-        [text, level, numbered] = self.indents2xml(text, asText)
+        [text, level, numbered] = self.indents2xml(text, as_text)
         text = re.sub(r"{{w\|([^}]+)}}", r"<i>\1</i>", text)
 
-        isComment = re.match("^''[^']", text) or re.match("^'''''[^']", text) or re.match("^{{[\W\w]*}}''[^']",text)
-        
+        isComment = re.match("^''[^']", text) or re.match("^'''''[^']", text) or re.match("^{{[\W\w]*}}''[^']", text)
 
         if text.startswith("{{"):
-
-            #Find all patterns like : {{some text}} in line
+            # Find all patterns like : {{some text}} in line
             matchings = re.findall(r"{{[\w\W]+?}}", text)
             for match in matchings:
-                #Check if pattern is like {{text| or {{text}} and if so, save text (which is a precision for definition) 
+                # Check if pattern is like {{text| or {{text}} and if so save text (which is a precision for definition)
                 precision = re.match("{{([\w\W]+?)(\||}})", match)
                 if precision and precision.group(1):
                     precisionVal = precision.group(1)
-                    #check if the precision is worth adding in definition
+                    # Check if the precision is worth adding in definition
                     if precisionVal in list(precisionsAllowed.keys()):
-                        text = text.replace(match,precisionsAllowed[precisionVal]) 
-        # Remove all unrecognized wiki tags
-        #text = re.sub(r"{{[^}]+}}", "", text)
+                        text = text.replace(match, precisionsAllowed[precisionVal])
+                        # Remove all unrecognized wiki tags
         text = re.sub(r"{{[\w\W]*}}$", "", text)
         varianteOrtho = re.match(r"{{variante ortho de\|([\w\W]+?)}}", text)
         if varianteOrtho and varianteOrtho.group(1):
-            text = "Variante orthographique du mot " + varianteOrtho.group(1) +"."
+            text = "Variante orthographique du mot " + varianteOrtho.group(1) + "."
         else:
             text = re.sub(r"{{[^}]+}}", "", text)
-
         # bold
         text = self.quote2xml("'''", "<b>", "</b>", text)
         # italic
         text = self.quote2xml("''", "<i>", "</i>", text)
-        
-        
-        #Get rid of Image
-        lowerText = text.lower()
-        if lowerText.startswith("[[image") or lowerText.startswith("[[fichier") or lowerText.startswith("=") or lowerText.startswith("[[file"):
-            text=""
+        # Get rid of Image
+        lower_text = text.lower()
+        if lower_text.startswith("[[image") or lower_text.startswith("[[fichier") or lower_text.startswith(
+                "=") or lower_text.startswith("[[file"):
+            text = ""
             return [text, level, numbered]
-        
+
         # Get rid of hyperlinks
         while text.find("[[") != -1:
             start = text.find("[[")
@@ -227,16 +219,16 @@ class WikiHandler(ContentHandler):
                 text = text.replace("[[", "", 1)
                 text = text.replace("]]", "", 1)
             else:
-                text = text[:start] + text[pipe+1:]
+                text = text[:start] + text[pipe + 1:]
                 text = text.replace("]]", "", 1)
-        
+
         if state == Wiktio.SYNONYME:
-            return [text,level, numbered]
+            return [text, level, numbered]
         if isComment and self.previousLineExample:
-            text=""
-            self.previousLineExample=True
-        elif isComment and len(text)>0:
-            self.previousLineExample=True
+            text = ""
+            self.previousLineExample = True
+        elif isComment and len(text) > 0:
+            self.previousLineExample = True
         elif len(text) == 0 or str(text).isspace():
             self.previousLineExample = False
         else:
@@ -245,42 +237,42 @@ class WikiHandler(ContentHandler):
 
         return [text, level, numbered]
 
-
-    def checkFrenchSection(self, line, isFrenchSection):
-        matchingLangSection = re.match(r"==( ?){{langue\|(.*)}}( ?)==",line,re.UNICODE)
+    @staticmethod
+    def check_french_section(line, is_french_section):
+        matchingLangSection = re.match(r"==( ?){{langue\|(.*)}}( ?)==", line, re.UNICODE)
         if matchingLangSection:
             if matchingLangSection.group(2) == "fr":
                 return True
             else:
                 return False
         else:
-            return isFrenchSection 
+            return is_french_section
 
-    def synonymStringCreation(self, synonym, title, firstTitle):
+    @staticmethod
+    def synonym_string_creation(synonym, title, firstTitle):
         if firstTitle:
             synonym += title + " "
         else:
-            synonym = re.sub(r', $','',synonym) 
+            synonym = re.sub(r', $', '', synonym)
             synonym += "<br>" + title + " "
         return synonym
 
-    
-    def handleSynonyms(self,text):
+    def handle_synonyms(self, text):
         synonym = ""
         firstTitle = True
         for line in text.splitlines():
-            #Title are informations about register for use of synonyms 
-            #Titles in synonyms section can be like '''Militaire''' or ; '''Militaire :'''
-            matchingTitle = re.match(r";{0,1} *'{2,3}(.*?)\W{0,1}\:{0,1}'{2,3}", line, re.UNICODE)
-            #Other title in synonym are like {{|Appareil portatif}}
+            # Title are information about register for use of synonyms
+            # Titles in synonyms section can be like '''Militaire''' or ; '''Militaire :'''
+            matchingTitle = re.match(r";? *'{2,3}(.*?)\W?\:?'{2,3}", line, re.UNICODE)
+            # Other title in synonym are like {{|Appareil portatif}}
             matchingOtherTitle = re.match(r"{{\|(.*)}}", line, re.UNICODE)
             if matchingTitle and not line.startswith("*"):
-                title = "(" + matchingTitle.group(1) +")"
-                synonym = self.synonymStringCreation(synonym, title, firstTitle)
+                title = "(" + matchingTitle.group(1) + ")"
+                synonym = self.synonym_string_creation(synonym, title, firstTitle)
                 firstTitle = False
             elif matchingOtherTitle and not line.startswith("*"):
-                title = "(" + matchingOtherTitle.group(1) +")"
-                synonym = self.synonymStringCreation(synonym, title, firstTitle)
+                title = "(" + matchingOtherTitle.group(1) + ")"
+                synonym = self.synonym_string_creation(synonym, title, firstTitle)
                 firstTitle = False
 
             if line.startswith("*"):
@@ -288,106 +280,94 @@ class WikiHandler(ContentHandler):
                 if currentSyn:
                     synonym += currentSyn.group(1) + ", "
 
-        synonym = re.sub(r', $','',synonym) 
+        synonym = re.sub(r', $', '', synonym)
         return synonym
 
-
-
     # Wikipedia text content is interpreted and transformed in XML
-    def parseText(self):
+    def parse_text(self):
         value = 0
-       # print "Processing " + self.titleContent
+        # print "Processing " + self.titleContent
         inWord = wiktio.Word()
         frenchSection = False
         global toAdd
         toAdd = False
         state = Wiktio.SKIP
-
-        wordType = ""
-        wordSubType = ""
         filterIndent = ""
-        gender = ""
-        self.textContent=re.sub("(={2,} {)","PATTERN_TO_SPLIT_BY" + r"\1",self.textContent)
-        #testSub = self.textContent
-        #testSub=re.sub("(={3,} {)","PATTERN_TO_SPLIT_BY" + r"\1",testSub)
-        #for textSplitted in re.split(r"(=== {{S\|.*\|fr\|{0,1}[\w\W]*?}} ===[\w\W]*?)=== {{S", self.textContent, flags=re.M|re.UNICODE):
-        global currentDefinition
-        for textSplitted in re.split(r"PATTERN_TO_SPLIT_BY", self.textContent, flags=re.M|re.UNICODE):
+        self.textContent = re.sub("(={2,} {)", "PATTERN_TO_SPLIT_BY" + r"\1", self.textContent)
+        global current_def
+        for text_split in re.split(r"PATTERN_TO_SPLIT_BY", self.textContent, flags=re.M | re.UNICODE):
             firstLine = True
 
             # Append an end of text marker, it forces the end of the definition
-            textSplitted += "\n{{-EndOfTest-}}"
+            text_split += "\n{{-EndOfTest-}}"
 
-            # Remove html comment (multilines)
-            textSplitted = re.sub(r"<!--[^>]*-->", "",textSplitted, re.M)
+            # Remove html comment (multiline)
+            text_split = re.sub(r"<!--[^>]*-->", "", text_split, re.M)
             definition = wiktio.Definition()
             inWord.addDefinition(definition)
             concat = ""
-            for l in textSplitted.splitlines():
-                #Check if in French part of definition, if not break
-                frenchSection = self.checkFrenchSection(l, frenchSection)
+            for line in text_split.splitlines():
+                # Check if in French part of definition, if not break
+                frenchSection = self.check_french_section(line, frenchSection)
                 if not frenchSection:
                     break
                 startWithHash = False
-                if l.startswith("#"):
+                if line.startswith("#"):
                     startWithHash = True
-                l = concat + l
+                line = concat + line
                 concat = ""
                 next = False
 
-                #Regarder le mot taf dans le wiktionnaire pour comprendre
-                if re.search(r"<[^>]+$", l):
-                    # Wiki uses a trick to format text area by ending in uncomplete
+                # Regarder le mot taf dans le wiktionnaire pour comprendre
+                if re.search(r"<[^>]+$", line):
+                    # Wiki uses a trick to format text area by ending in incomplete
                     # html tags. In this case, we concat this line with the next one
                     # before processing it
-                    concat = l
+                    concat = line
                     continue
-                #Retrieve nature of the word in line like === {{S|wordNature|fr(|.*optional)}} ===
-                matching_word_nature = re.match(r"=== {{S\|([\w\W]*?)\|fr}} ===",l,re.UNICODE)
-                matching_word_nature_bis = re.match(r"=== {{S\|([\w\W]*?)\|fr\|.*}} ===",l,re.UNICODE)
-                matching_word_nature_bis = re.match(r"=== {{S\|([\w\W]*?)\|fr\|.*}} ===",l,re.UNICODE)
-                matching_synonyme = re.match(r"==== {{S\|synonymes}} ====",l,re.UNICODE)
+                # Retrieve nature of the word in line like === {{S|wordNature|fr(|.*optional)}} ===
+                matching_word_nature = re.match(r"=== {{S\|([\w\W]*?)\|fr}} ===", line, re.UNICODE)
+                matching_word_nature_bis = re.match(r"=== {{S\|([\w\W]*?)\|fr\|.*}} ===", line, re.UNICODE)
+                matching_synonyme = re.match(r"==== {{S\|synonymes}} ====", line, re.UNICODE)
 
-                # Determine the section of the document we are in
-                
                 if firstLine and not matching_word_nature and not matching_word_nature_bis and not matching_synonyme:
                     break
 
                 if matching_word_nature or matching_word_nature_bis:
-                    currentDefinition = definition
+                    current_def = definition
                 elif matching_synonyme:
-                    definition = currentDefinition
+                    definition = current_def
                 firstLine = False
-                    
-                if l.startswith("'''" + self.titleContent + "'''") or l.startswith("'''" + self.titleContent + " '''"):
+
+                if line.startswith("'''" + self.titleContent + "'''") or line.startswith("'''" + self.titleContent + " '''"):
                     for wt in list(self.genders.keys()):
-                        if re.search(wt, l):
+                        if re.search(wt, line):
                             gender = self.genders[wt]
                             definition.setGender(gender)
                             break
                     inWord.setName(self.titleContent)
                     # Get rid of the word, we don't want it in the definition
-                    l = re.sub(r"'''.*'''[ ]*(.*)", r"\1", l)
+                    line = re.sub(r"'''.*'''[ ]*(.*)", r"\1", line)
                     # Get rid of non wiki tags
-                    l = re.sub(r'}}[^}]+{{', r'}} {{', l)
+                    line = re.sub(r'}}[^}]+{{', r'}} {{', line)
                     definition.addDescription("", 0, False)
                 elif matching_word_nature:
-                    if "flexion" not in l and matching_word_nature.group(1) in typesAllowed:
-                        definition.setType(matching_word_nature.group(1).capitalize()) 
-                        state=Wiktio.DEFINITION
+                    if "flexion" not in line and matching_word_nature.group(1) in typesAllowed:
+                        definition.setType(matching_word_nature.group(1).capitalize())
+                        state = Wiktio.DEFINITION
                         toAdd = True
                 elif matching_word_nature_bis:
-                    if "flexion" not in l and matching_word_nature_bis.group(1) in typesAllowed:
-                        definition.setType(matching_word_nature_bis.group(1).capitalize()) 
-                        state=Wiktio.DEFINITION
+                    if "flexion" not in line and matching_word_nature_bis.group(1) in typesAllowed:
+                        definition.setType(matching_word_nature_bis.group(1).capitalize())
+                        state = Wiktio.DEFINITION
                         toAdd = True
                 elif matching_synonyme:
-                    state=Wiktio.SYNONYME
-                    synonyms = self.handleSynonyms(textSplitted)
+                    state = Wiktio.SYNONYME
+                    synonyms = self.handle_synonyms(text_split)
                     definition.add(state, synonyms)
                     break
-                #Pourquoi cette regexp ? Peutetre pour flexion (Regarder eclairci dans wiktionnaire)
-                elif re.search(r"{{-.*-.*}}", l):
+                # Why that ? Maybe for flexion (Watch eclairci in wiktionary)
+                elif re.search(r"{{-.*-.*}}", line):
                     if not definition.rootDescription.isEmpty():
                         filterIndent = ""
                         definition = wiktio.Definition()
@@ -400,7 +380,7 @@ class WikiHandler(ContentHandler):
                 if filterIndent != "":
                     # We are filtering, check this line is
                     # at a lower indentation level
-                    result = re.search(r"^[ ]*[*#:;]+[ ]*", l)
+                    result = re.search(r"^[ ]*[*#:;]+[ ]*", line)
                     if result:
                         if len(result.group(0).rstrip()) > len(filterIndent):
                             next = True
@@ -412,24 +392,21 @@ class WikiHandler(ContentHandler):
                 if next:
                     continue
 
-                if state == Wiktio.DEFINITION and startWithHash and not l.isspace():
-                    [text, level, numbered] = self.wiki2xml(l, False, state)
+                if state == Wiktio.DEFINITION and startWithHash and not line.isspace():
+                    [text, level, numbered] = self.wiki2xml(line, False, state)
                     definition.addDescription(text, level, numbered)
                 elif state == Wiktio.SYNONYME:
-                    [text, level, numbered] = self.wiki2xml(l, False, state)
+                    [text, level, numbered] = self.wiki2xml(line, False, state)
                     definition.add(state, text)
                 elif not startWithHash:
                     continue
                 else:
-                    if len(l) > 0:
-                        definition.add(state, self.wiki2xml(l, True)[0], state)
+                    if len(line) > 0:
+                        definition.add(state, self.wiki2xml(line, True)[0], state)
 
         return inWord
 
-# Set UTF-8 stdout in case of the user piping our output
 importlib.reload(sys)
-#sys.setdefaultencoding('utf-8')
-
 wikiFile = sys.argv[1]
 wordsFile = sys.argv[2]
 output = sys.argv[3]
@@ -439,21 +416,22 @@ open(output, 'w').close()
 # Import the list of words
 f = open(wordsFile, "r")
 words = []
-wordslist = set([w.rstrip() for w in f.readlines()])
+words_list = set([w.rstrip() for w in f.readlines()])
 
 f.close()
 _wiktio = wiktio.Wiktio()
-outputSorted = output + "Sorted" 
+outputSorted = output + "Sorted"
 
 try:
-    parse(wikiFile, WikiHandler(wordslist, 'fr', _wiktio, output))
-except Exception as e: print(e)
+    parse(wikiFile, WikiHandler(words_list, 'fr', _wiktio, output))
+except Exception as e:
+    print(e)
 
 sortDicoFile(output, outputSorted)
 os.rename(outputSorted, output)
-splitDicoFile(output, 15000)
+splitDicoFile(output, 150000)
 os.remove(output)
-#with open(output, 'a+') as dictionnary:
+# with open(output, 'a+') as dictionnary:
 #    dictionnary.write("</root>")
 
 '''def sortchildrenby(parent, attr):
