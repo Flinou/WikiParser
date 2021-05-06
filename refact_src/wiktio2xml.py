@@ -31,6 +31,9 @@ from splitFile import splitDicoFile
 from sortFile import sortDicoFile
 import importlib
 
+orthographic_constant = "Variante orthographique du mot "
+pattern_to_split = "PATTERN_TO_SPLIT_BY"
+
 word_rank = 0
 cpt = 0
 debug = False
@@ -106,9 +109,7 @@ class WikiHandler(ContentHandler):
                 if word and word.name:
                     # Remove words with space (expression for ex). Keep words with accent thanks to re.UNICODE trick
                     match_title_ctnt_space = re.match(".* .*", self.titleContent, re.UNICODE)
-                    # Remove words with digit in it
-                    match_title_ctnt_nmbr = re.match("\d", self.titleContent)
-                if len(self.titleContent) > 1 and match_title_ctnt_space is None and match_title_ctnt_nmbr is None and toAdd == True:
+                if len(self.titleContent) > 1 and match_title_ctnt_space is None and toAdd == True:
                     self.wiktio.addWord(word)
                     self.wiktio.dump2html(self.output)
                     self.wiktio = wiktio.Wiktio()
@@ -196,13 +197,11 @@ class WikiHandler(ContentHandler):
         text = re.sub(r"{{[\w\W]*}}$", "", text)
         varianteOrtho = re.match(r"{{variante ortho de\|([\w\W]+?)}}", text)
         if varianteOrtho and varianteOrtho.group(1):
-            text = "Variante orthographique du mot " + varianteOrtho.group(1) + "."
+            text = orthographic_constant + varianteOrtho.group(1) + "."
         else:
             text = re.sub(r"{{[^}]+}}", "", text)
-        # bold
-        text = self.quote2xml("'''", "<b>", "</b>", text)
-        # italic
-        text = self.quote2xml("''", "<i>", "</i>", text)
+
+        text = self.make_text_italic_bold(text)
         # Get rid of Image
         lower_text = text.lower()
         if lower_text.startswith("[[image") or lower_text.startswith("[[fichier") or lower_text.startswith(
@@ -236,6 +235,11 @@ class WikiHandler(ContentHandler):
             self.previousLineExample = False
 
         return [text, level, numbered]
+
+    def make_text_italic_bold(self, text):
+        text = self.quote2xml("'''", "<b>", "</b>", text)
+        text = self.quote2xml("''", "<i>", "</i>", text)
+        return text
 
     @staticmethod
     def check_french_section(line, is_french_section):
@@ -293,9 +297,9 @@ class WikiHandler(ContentHandler):
         toAdd = False
         state = Wiktio.SKIP
         filterIndent = ""
-        self.textContent = re.sub("(={2,} {)", "PATTERN_TO_SPLIT_BY" + r"\1", self.textContent)
+        self.textContent = re.sub("(={2,} {)", pattern_to_split + r"\1", self.textContent)
         global current_def
-        for text_split in re.split(r"PATTERN_TO_SPLIT_BY", self.textContent, flags=re.M | re.UNICODE):
+        for text_split in re.split(r"%s" % pattern_to_split, self.textContent, flags=re.M | re.UNICODE):
             firstLine = True
 
             # Append an end of text marker, it forces the end of the definition
@@ -326,25 +330,20 @@ class WikiHandler(ContentHandler):
                     concat = line
                     continue
                 # Retrieve nature of the word in line like === {{S|wordNature|fr(|.*optional)}} ===
-                matching_word_nature = re.match(r"=== {{S\|([\w\W]*?)\|fr}} ===", line, re.UNICODE)
-                matching_word_nature_bis = re.match(r"=== {{S\|([\w\W]*?)\|fr\|.*}} ===", line, re.UNICODE)
-                matching_synonyme = re.match(r"==== {{S\|synonymes}} ====", line, re.UNICODE)
+                matching_word_nature = re.match(r"=== {{S\|([\w\W]*?)\|fr(\|.*)?}} ===", line, re.UNICODE)
+                matching_synonym = re.match(r"==== {{S\|synonymes}} ====", line, re.UNICODE)
 
-                if firstLine and not matching_word_nature and not matching_word_nature_bis and not matching_synonyme:
+                if firstLine and not matching_word_nature and not matching_synonym:
                     break
 
-                if matching_word_nature or matching_word_nature_bis:
+                if matching_word_nature:
                     current_def = definition
-                elif matching_synonyme:
+                elif matching_synonym:
                     definition = current_def
                 firstLine = False
 
                 if line.startswith("'''" + self.titleContent + "'''") or line.startswith("'''" + self.titleContent + " '''"):
-                    for wt in list(self.genders.keys()):
-                        if re.search(wt, line):
-                            gender = self.genders[wt]
-                            definition.setGender(gender)
-                            break
+                    self.define_gender(definition, line)
                     inWord.setName(self.titleContent)
                     # Get rid of the word, we don't want it in the definition
                     line = re.sub(r"'''.*'''[ ]*(.*)", r"\1", line)
@@ -356,12 +355,7 @@ class WikiHandler(ContentHandler):
                         definition.setType(matching_word_nature.group(1).capitalize())
                         state = Wiktio.DEFINITION
                         toAdd = True
-                elif matching_word_nature_bis:
-                    if "flexion" not in line and matching_word_nature_bis.group(1) in typesAllowed:
-                        definition.setType(matching_word_nature_bis.group(1).capitalize())
-                        state = Wiktio.DEFINITION
-                        toAdd = True
-                elif matching_synonyme:
+                elif matching_synonym:
                     state = Wiktio.SYNONYME
                     synonyms = self.handle_synonyms(text_split)
                     definition.add(state, synonyms)
@@ -405,6 +399,14 @@ class WikiHandler(ContentHandler):
                         definition.add(state, self.wiki2xml(line, True)[0], state)
 
         return inWord
+
+    def define_gender(self, definition, line):
+        for wt in list(self.genders.keys()):
+            if re.search(wt, line):
+                gender = self.genders[wt]
+                definition.setGender(gender)
+                break
+
 
 importlib.reload(sys)
 wikiFile = sys.argv[1]
