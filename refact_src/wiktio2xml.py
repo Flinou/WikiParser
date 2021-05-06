@@ -104,7 +104,7 @@ class WikiHandler(ContentHandler):
             if self.titleContent in self.searchWords:
                 self.searchWords.remove(self.titleContent)
                 word = self.parse_text()
-                if len(self.titleContent) > 1 and toAdd == True:
+                if toAdd is True:
                     self.wiktio.addWord(word)
                     self.wiktio.dump2html(self.output)
                     self.wiktio = wiktio.Wiktio()
@@ -293,7 +293,6 @@ class WikiHandler(ContentHandler):
         state = Wiktio.SKIP
         filterIndent = ""
         self.textContent = re.sub("(={2,} {)", pattern_to_split + r"\1", self.textContent)
-        global current_def
         for text_split in re.split(r"%s" % pattern_to_split, self.textContent, flags=re.M | re.UNICODE):
             firstLine = True
 
@@ -306,16 +305,12 @@ class WikiHandler(ContentHandler):
             inWord.addDefinition(definition)
             concat = ""
             for line in text_split.splitlines():
-                # Check if in French part of definition, if not break
-                frenchSection = self.check_french_section(line, frenchSection)
-                if not frenchSection:
+                if not (frenchSection := self.check_french_section(line, frenchSection)):
                     break
-                startWithHash = False
-                if line.startswith("#"):
-                    startWithHash = True
+
+                startWithHash = line.startswith("#")
                 line = concat + line
                 concat = ""
-                next = False
 
                 # Regarder le mot taf dans le wiktionnaire pour comprendre
                 if re.search(r"<[^>]+$", line):
@@ -330,21 +325,18 @@ class WikiHandler(ContentHandler):
 
                 if firstLine and not matching_word_nature and not matching_synonym:
                     break
+                else:
+                    firstLine = False
 
                 if matching_word_nature:
                     current_def = definition
                 elif matching_synonym:
                     definition = current_def
-                firstLine = False
 
-                if line.startswith("'''" + self.titleContent + "'''") or line.startswith("'''" + self.titleContent + " '''"):
+                if re.match("'''" + self.titleContent + " ?'''", line):
                     self.define_gender(definition, line)
                     inWord.setName(self.titleContent)
-                    # Get rid of the word, we don't want it in the definition
-                    line = re.sub(r"'''.*'''[ ]*(.*)", r"\1", line)
-                    # Get rid of non wiki tags
-                    line = re.sub(r'}}[^}]+{{', r'}} {{', line)
-                    definition.addDescription("", 0, False)
+                    continue
                 elif matching_word_nature:
                     if "flexion" not in line and matching_word_nature.group(1) in typesAllowed:
                         definition.setType(matching_word_nature.group(1).capitalize())
@@ -357,28 +349,9 @@ class WikiHandler(ContentHandler):
                     break
                 # Why that ? Maybe for flexion (Watch eclairci in wiktionary)
                 elif re.search(r"{{-.*-.*}}", line):
-                    if not definition.rootDescription.isEmpty():
-                        filterIndent = ""
-                        definition = wiktio.Definition()
-                        inWord.addDefinition(definition)
                     state = Wiktio.SKIP
 
                 if state == Wiktio.SKIP:
-                    continue
-
-                if filterIndent != "":
-                    # We are filtering, check this line is
-                    # at a lower indentation level
-                    result = re.search(r"^[ ]*[*#:;]+[ ]*", line)
-                    if result:
-                        if len(result.group(0).rstrip()) > len(filterIndent):
-                            next = True
-                        else:
-                            filterIndent = ""
-                    else:
-                        filterIndent = ""
-
-                if next:
                     continue
 
                 if state == Wiktio.DEFINITION and startWithHash and not line.isspace():
