@@ -104,8 +104,6 @@ class WikiHandler(ContentHandler):
             if self.titleContent in self.searchWords:
                 self.searchWords.remove(self.titleContent)
                 word = self.parse_text()
-                match_title_ctnt_space = "Notadded"
-                match_title_ctnt_nmbr = "Notadded"
                 if len(self.titleContent) > 1 and toAdd == True:
                     self.wiktio.addWord(word)
                     self.wiktio.dump2html(self.output)
