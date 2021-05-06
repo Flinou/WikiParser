@@ -106,10 +106,7 @@ class WikiHandler(ContentHandler):
                 word = self.parse_text()
                 match_title_ctnt_space = "Notadded"
                 match_title_ctnt_nmbr = "Notadded"
-                if word and word.name:
-                    # Remove words with space (expression for ex). Keep words with accent thanks to re.UNICODE trick
-                    match_title_ctnt_space = re.match(".* .*", self.titleContent, re.UNICODE)
-                if len(self.titleContent) > 1 and match_title_ctnt_space is None and toAdd == True:
+                if len(self.titleContent) > 1 and toAdd == True:
                     self.wiktio.addWord(word)
                     self.wiktio.dump2html(self.output)
                     self.wiktio = wiktio.Wiktio()
