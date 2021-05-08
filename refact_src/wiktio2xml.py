@@ -17,22 +17,23 @@
 #   along with this program; if not, see <http://www.gnu.org/licenses/>.
 #
 
+import importlib
+import os
+import re
+import sys
 from xml.sax import parse
 from xml.sax.handler import ContentHandler
-from wikimodele import *
-from wikimodelearray import *
-import sys
-import re
-import os
 
 import wiktio
-from wiktio import Wiktio
-from splitFile import splitDicoFile
 from sortFile import sortDicoFile
-import importlib
+from splitFile import splitDicoFile
+from wikimodele import *
+from wikimodelearray import *
+from wiktio import Wiktio
 
 orthographic_constant = "Variante orthographique du mot "
 pattern_to_split = "PATTERN_TO_SPLIT_BY"
+def_end_str = "{{-EndOfDef-}}"
 
 word_rank = 0
 cpt = 0
@@ -284,20 +285,17 @@ class WikiHandler(ContentHandler):
 
     # Wikipedia text content is interpreted and transformed in XML
     def parse_text(self):
-        value = 0
-        # print "Processing " + self.titleContent
         inWord = wiktio.Word()
         frenchSection = False
         global toAdd
         toAdd = False
         state = Wiktio.SKIP
-        filterIndent = ""
         self.textContent = re.sub("(={2,} {)", pattern_to_split + r"\1", self.textContent)
         for text_split in re.split(r"%s" % pattern_to_split, self.textContent, flags=re.M | re.UNICODE):
-            firstLine = True
+            first_line = True
 
             # Append an end of text marker, it forces the end of the definition
-            text_split += "\n{{-EndOfTest-}}"
+            text_split += "\n" + def_end_str
 
             # Remove html comment (multiline)
             text_split = re.sub(r"<!--[^>]*-->", "", text_split, re.M)
@@ -307,26 +305,25 @@ class WikiHandler(ContentHandler):
             for line in text_split.splitlines():
                 if not (frenchSection := self.check_french_section(line, frenchSection)):
                     break
-
                 startWithHash = line.startswith("#")
                 line = concat + line
                 concat = ""
 
-                # Regarder le mot taf dans le wiktionnaire pour comprendre
                 if re.search(r"<[^>]+$", line):
                     # Wiki uses a trick to format text area by ending in incomplete
                     # html tags. In this case, we concat this line with the next one
                     # before processing it
                     concat = line
                     continue
+
                 # Retrieve nature of the word in line like === {{S|wordNature|fr(|.*optional)}} ===
                 matching_word_nature = re.match(r"=== {{S\|([\w\W]*?)\|fr(\|.*)?}} ===", line, re.UNICODE)
                 matching_synonym = re.match(r"==== {{S\|synonymes}} ====", line, re.UNICODE)
 
-                if firstLine and not matching_word_nature and not matching_synonym:
+                if self.not_correct_first_line(first_line, matching_synonym, matching_word_nature):
                     break
                 else:
-                    firstLine = False
+                    first_line = False
 
                 if matching_word_nature:
                     current_def = definition
@@ -337,24 +334,22 @@ class WikiHandler(ContentHandler):
                     self.define_gender(definition, line)
                     inWord.setName(self.titleContent)
                     continue
-                elif matching_word_nature:
-                    if "flexion" not in line and matching_word_nature.group(1) in typesAllowed:
-                        definition.setType(matching_word_nature.group(1).capitalize())
-                        state = Wiktio.DEFINITION
-                        toAdd = True
                 elif matching_synonym:
                     state = Wiktio.SYNONYME
                     synonyms = self.handle_synonyms(text_split)
                     definition.add(state, synonyms)
                     break
-                # Why that ? Maybe for flexion (Watch eclairci in wiktionary)
-                elif re.search(r"{{-.*-.*}}", line):
+
+                if matching_word_nature and "flexion" not in line and matching_word_nature.group(1) in typesAllowed:
+                    definition.setType(matching_word_nature.group(1).capitalize())
+                    state = Wiktio.DEFINITION
+                    toAdd = True
+                elif def_end_str in line:
                     state = Wiktio.SKIP
 
                 if state == Wiktio.SKIP:
                     continue
-
-                if state == Wiktio.DEFINITION and startWithHash and not line.isspace():
+                elif state == Wiktio.DEFINITION and startWithHash and not line.isspace():
                     [text, level, numbered] = self.wiki2xml(line, False, state)
                     definition.addDescription(text, level, numbered)
                 elif state == Wiktio.SYNONYME:
@@ -362,16 +357,17 @@ class WikiHandler(ContentHandler):
                     definition.add(state, text)
                 elif not startWithHash:
                     continue
-                else:
-                    if len(line) > 0:
-                        definition.add(state, self.wiki2xml(line, True)[0], state)
 
         return inWord
 
+    @staticmethod
+    def not_correct_first_line(first_line, matching_synonym, matching_word_nature):
+        return first_line and not matching_word_nature and not matching_synonym
+
     def define_gender(self, definition, line):
-        for wt in list(self.genders.keys()):
-            if re.search(wt, line):
-                gender = self.genders[wt]
+        for gender in list(self.genders.keys()):
+            if re.search(gender, line):
+                gender = self.genders[gender]
                 definition.setGender(gender)
                 break
 
