@@ -38,7 +38,6 @@ def_end_str = "{{-EndOfDef-}}"
 word_rank = 0
 cpt = 0
 debug = False
-toAdd = False
 
 
 # define Python user-defined exceptions
@@ -105,7 +104,7 @@ class WikiHandler(ContentHandler):
             if self.titleContent in self.searchWords:
                 self.searchWords.remove(self.titleContent)
                 word = self.parse_text()
-                if toAdd is True:
+                if word.to_add is True:
                     self.wiktio.addWord(word)
                     self.wiktio.dump2html(self.output)
                     self.wiktio = wiktio.Wiktio()
@@ -257,7 +256,7 @@ class WikiHandler(ContentHandler):
             synonym += "<br>" + title + " "
         return synonym
 
-    def handle_synonyms(self, text):
+    def get_synonyms(self, text):
         synonym = ""
         firstTitle = True
         for line in text.splitlines():
@@ -285,12 +284,12 @@ class WikiHandler(ContentHandler):
 
     # Wikipedia text content is interpreted and transformed in XML
     def parse_text(self):
-        inWord = wiktio.Word()
-        frenchSection = False
-        global toAdd
-        toAdd = False
-        state = Wiktio.SKIP
+        in_word = wiktio.Word()
         self.textContent = re.sub("(={2,} {)", pattern_to_split + r"\1", self.textContent)
+        self.handle_by_sections(False, in_word, Wiktio.SKIP)
+        return in_word
+
+    def handle_by_sections(self, is_french_section, in_word, state):
         for text_split in re.split(r"%s" % pattern_to_split, self.textContent, flags=re.M | re.UNICODE):
             first_line = True
 
@@ -300,10 +299,10 @@ class WikiHandler(ContentHandler):
             # Remove html comment (multiline)
             text_split = re.sub(r"<!--[^>]*-->", "", text_split, re.M)
             definition = wiktio.Definition()
-            inWord.addDefinition(definition)
+            in_word.addDefinition(definition)
             concat = ""
             for line in text_split.splitlines():
-                if not (frenchSection := self.check_french_section(line, frenchSection)):
+                if not (is_french_section := self.check_french_section(line, is_french_section)):
                     break
                 startWithHash = line.startswith("#")
                 line = concat + line
@@ -316,9 +315,7 @@ class WikiHandler(ContentHandler):
                     concat = line
                     continue
 
-                # Retrieve nature of the word in line like === {{S|wordNature|fr(|.*optional)}} ===
-                matching_word_nature = re.match(r"=== {{S\|([\w\W]*?)\|fr(\|.*)?}} ===", line, re.UNICODE)
-                matching_synonym = re.match(r"==== {{S\|synonymes}} ====", line, re.UNICODE)
+                matching_synonym, matching_word_nature = self.init_regexp_syn_nature(line)
 
                 if self.not_correct_first_line(first_line, matching_synonym, matching_word_nature):
                     break
@@ -330,35 +327,66 @@ class WikiHandler(ContentHandler):
                 elif matching_synonym:
                     definition = current_def
 
-                if re.match("'''" + self.titleContent + " ?'''", line):
-                    self.define_gender(definition, line)
-                    inWord.setName(self.titleContent)
-                    continue
-                elif matching_synonym:
-                    state = Wiktio.SYNONYME
-                    synonyms = self.handle_synonyms(text_split)
-                    definition.add(state, synonyms)
+                if self.handle_synonyms(definition, matching_synonym, text_split):
                     break
 
-                if matching_word_nature and "flexion" not in line and matching_word_nature.group(1) in typesAllowed:
-                    definition.setType(matching_word_nature.group(1).capitalize())
-                    state = Wiktio.DEFINITION
-                    toAdd = True
-                elif def_end_str in line:
-                    state = Wiktio.SKIP
+                self.handle_gender(definition, in_word, line, matching_word_nature)
+                state = self.handle_type(definition, line, matching_word_nature, state, in_word)
+                state = self.handle_last_line(line, state)
 
                 if state == Wiktio.SKIP:
                     continue
-                elif state == Wiktio.DEFINITION and startWithHash and not line.isspace():
-                    [text, level, numbered] = self.wiki2xml(line, False, state)
-                    definition.addDescription(text, level, numbered)
-                elif state == Wiktio.SYNONYME:
-                    [text, level, numbered] = self.wiki2xml(line, False, state)
-                    definition.add(state, text)
-                elif not startWithHash:
-                    continue
 
-        return inWord
+                self.write_def_and_syn(definition, line, startWithHash, state)
+
+    def init_regexp_syn_nature(self, line):
+        # Retrieve nature of the word in line like === {{S|wordNature|fr(|.*optional)}} ===
+        matching_word_nature = re.match(r"=== {{S\|([\w\W]*?)\|fr(\|.*)?}} ===", line, re.UNICODE)
+        matching_synonym = re.match(r"==== {{S\|synonymes}} ====", line, re.UNICODE)
+        return matching_synonym, matching_word_nature
+
+    def write_def_and_syn(self, definition, line, startWithHash, state):
+        if state == Wiktio.DEFINITION and startWithHash and not line.isspace():
+            [text, level, numbered] = self.wiki2xml(line, False, state)
+            definition.addDescription(text, level, numbered)
+        elif state == Wiktio.SYNONYME:
+            [text, level, numbered] = self.wiki2xml(line, False, state)
+            definition.add(state, text)
+
+    def handle_synonyms(self, definition, matching_synonym, text_split):
+        if matching_synonym:
+            state = Wiktio.SYNONYME
+            synonyms = self.get_synonyms(text_split)
+            definition.add(state, synonyms)
+            return True
+        return False
+
+    def handle_last_line(self, line, state):
+        if def_end_str in line:
+            state = Wiktio.SKIP
+        return state
+
+    def handle_type(self, definition, line, matching_word_nature, state, in_word):
+        if self.is_allowed_word(line, matching_word_nature):
+            definition.setType(matching_word_nature.group(1).capitalize())
+            state = Wiktio.DEFINITION
+            in_word.set_to_add(True)
+        return state
+
+    def handle_gender(self, definition, inWord, line, matching_word_nature):
+        if self.is_gender_line(self, line, matching_word_nature):
+            self.define_gender(definition, line)
+            inWord.setName(self.titleContent)
+
+    #Return true if word's type belongs to typesAllowed
+    @staticmethod
+    def is_allowed_word(line, matching_word_nature):
+        return matching_word_nature and "flexion" not in line and matching_word_nature.group(1) in typesAllowed
+
+    #Return if the current line provides gender of the current word
+    @staticmethod
+    def is_gender_line(self, line, matching_word_nature):
+        return re.match("'''" + self.titleContent + " ?'''", line)
 
     @staticmethod
     def not_correct_first_line(first_line, matching_synonym, matching_word_nature):
