@@ -144,7 +144,7 @@ class Definition:
 
         if atype == Wiktio.ANAGRAM:
             self.anagram.append(text)
-        elif atype == Wiktio.SYNONYM:
+        elif atype == Wiktio.SYNONYME:
             self.synonym.append(text)
         elif atype == Wiktio.ANTONYM:
             self.antonym.append(text)
@@ -168,20 +168,27 @@ class Definition:
                 f.write ( "<a href='" + prefix + img + "'>" + \
                     img + '</a><br/>' )
 
-    def dump2html(self, f, name):
+    def writeSynonyms(self, synonyms):
+        space = " "
+        synString = "\t\t<syn><![CDATA["
+        synString = synString + space.join(synonyms)
+        synString = synString + "]]></syn>"
+        return synString
+
+
+    def dump2html(self, f):
         global firstWrite
         if self.filtered or not self.rootDescription.hasContent():
             return
-        name = str(name).lower()
-        unaccentedName = unidecode.unidecode(str(name))
-        f.write ( "\t<definition val=\"" + name + "\"" + " val2=\"" + unaccentedName + "\">\n" )
-        f.write ("\t\t<nature><![CDATA[<i><b>" + self.type + " " + self.gender + "</i></b>]]></nature>\n")
-        f.write("\t\t<def><![CDATA[")
+        f.write ("\t\t\t<nature><![CDATA[<i><b>" + self.type + " " + self.gender + "</i></b>]]></nature>\n")
+        f.write("\t\t\t<def><![CDATA[")
         #self.dump2htmlImage(f)
         self.rootDescription.dump2html(f)
         firstWrite = True
         f.write("]]></def>\n")
-        f.write ( "\t</definition>\n" )
+        space = " "
+        if (len(self.synonym) > 0):
+            f.write(self.writeSynonyms(self.synonym))
 
 class Word:
 
@@ -196,18 +203,32 @@ class Word:
         self.definition.append(definition)
 
     def dump2html(self, f):
+        firstWrite=True
         if not self.definition:
             f.write ( "<h2>ERROR: NO DEFINITION</h2>" )
             return
+        if len(self.definition) > 0:
+            definitionTemp = self.definition[0]
+            
         for d in self.definition:
-            d.dump2html(f, self.name)
+            if d.type is not None and len(d.type) > 0:
+                name = str(self.name).lower()
+                #unaccentedName = unidecode.unidecode(str(name))
+                if firstWrite:
+                    f.write ( "\t<definition val=\"" + name + "\"" + ">\n" )
+                    firstWrite=False
+                f.write ( "\t\t<type>\n" )
+                d.dump2html(f)
+                f.write ( "\t\t</type>\n" )
+    
+        f.write ( "\t</definition>\n" )
 
 
 class Wiktio:
 
     (DEFINITION,
      ANAGRAM,
-     SYNONYM,
+     SYNONYME,
      ANTONYM,
      HYPERONYM,
      HYPONYM,

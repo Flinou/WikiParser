@@ -1,8 +1,14 @@
 # -*- coding: utf-8 -*-
 import lxml.etree
+import subprocess 
+
+def sortDictionary(output):
+    with open(output, 'a+') as dictionnary:
+        dictionnary.write("</root>")
+    subprocess.call(["./sortDico.sh", output])
 
 def sortDicoFile(output, outputSorted):
-    with open(output, 'a+', 0) as dictionnary:
+    with open(output, 'a+') as dictionnary:
         dictionnary.write("</root>")
     def sortchildrenby(parent, attr):
         parent[:] = sorted(parent, key=lambda child: child.get(attr))
@@ -13,12 +19,13 @@ def sortDicoFile(output, outputSorted):
 
     sortchildrenby(root, 'val2')
 
-    for c in root:
-        sortchildrenby(c, 'desc')
+    #for c in root:
+       # sortchildrenby(c, 'desc')
 
     for c in root:
         c.attrib.pop("val2", None)
 
-    with open(outputSorted, 'w', 0) as f:
-        f.write("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n" + lxml.etree.tostring(root, encoding="utf-8", method="xml"))
+    with open(outputSorted, 'w') as f:
+        f.write("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n" + lxml.etree.tostring(root, encoding="utf-8", method="xml").decode(encoding='UTF-8'))
+
 

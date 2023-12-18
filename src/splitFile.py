@@ -1,3 +1,4 @@
+import sys
 # -*- coding: utf-8 -*-
 
 def splitDicoFile(output, lines_per_file):
@@ -22,3 +23,6 @@ def splitDicoFile(output, lines_per_file):
             splitfile.write(line)
         if splitfile:
             splitfile.close()
+
+splitDicoFile(sys.argv[1], 15000)
+

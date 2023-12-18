@@ -22,6 +22,7 @@ from xml.sax.handler import ContentHandler
 from wikimodele import *
 from wikimodelearray import *
 import sys
+import subprocess 
 import re
 import os
 import lxml.etree
@@ -33,10 +34,10 @@ import timeit
 from wiktio import Wiktio
 from splitFile import splitDicoFile
 from sortFile import sortDicoFile
+from sortFile import sortDictionary
 import importlib
 
 compteur = 0
-cpt = 0
 debug = False
 toAdd = False
 # define Python user-defined exceptions
@@ -58,7 +59,6 @@ class WikiHandler(ContentHandler):
         self.origin = output
         self.locale = locale
         self.wiktio = _wiktio
-        self.cpt = 0
 
         self.isPageElement = False
 
@@ -92,8 +92,7 @@ class WikiHandler(ContentHandler):
 
     def endElement(self, name):
         global compteur
-        global cpt
-        compteur = compteur + 1 
+        compteur = compteur + 1
         if compteur % 10000 == 0:
             print("Element " + str(compteur) + " / 6600000")
         if name == 'page':
@@ -114,9 +113,6 @@ class WikiHandler(ContentHandler):
                     self.wiktio.addWord(word)
                     self.wiktio.dump2html(self.output)
                     self.wiktio = wiktio.Wiktio()
-                cpt = cpt + 1 
-                if cpt == 10000:
-                    raise EndOfParsing
             self.titleContent = ""
             self.textContent = ""
         elif name == 'title':
@@ -190,7 +186,7 @@ class WikiHandler(ContentHandler):
             #Find all patterns like : {{some text}} in line
             matchings = re.findall(r"{{[\w\W]+?}}", text)
             for match in matchings:
-                #Check if pattern is like {{text| or {{text}} and if so, save text (which is a precision for definition) 
+                #Check if pattern is like {{text| or {{text}} and if so, save text (which is a clarification for definition) 
                 precision = re.match("{{([\w\W]+?)(\||}})", match)
                 if precision and precision.group(1):
                     precisionVal = precision.group(1)
@@ -200,9 +196,12 @@ class WikiHandler(ContentHandler):
         # Remove all unrecognized wiki tags
         #text = re.sub(r"{{[^}]+}}", "", text)
         text = re.sub(r"{{[\w\W]*}}$", "", text)
-        varianteOrtho = re.match(r"{{variante ortho de\|([\w\W]+?)}}", text)
-        if varianteOrtho and varianteOrtho.group(1):
-            text = "Variante orthographique du mot " + varianteOrtho.group(1) +"."
+        varianteOrtho = re.match(r"{{variante (ortho |orthographique )?de ?\|([\w\W]+?)(\|[\w\W]*)?}}", text, re.IGNORECASE)
+        variantePronom = re.match(r"{{forme pronominale ?\|([\w\W]+?)(\|[\w\W]*)?}}", text, re.IGNORECASE)
+        if varianteOrtho and varianteOrtho.group(2):
+            text = "Variante du mot " + varianteOrtho.group(2) +"."
+        elif variantePronom and variantePronom.group(1):
+            text = "Forme pronominale de " + variantePronom.group(1)
         else:
             text = re.sub(r"{{[^}]+}}", "", text)
 
@@ -345,7 +344,6 @@ class WikiHandler(ContentHandler):
                 #Retrieve nature of the word in line like === {{S|wordNature|fr(|.*optional)}} ===
                 matching_word_nature = re.match(r"=== {{S\|([\w\W]*?)\|fr}} ===",l,re.UNICODE)
                 matching_word_nature_bis = re.match(r"=== {{S\|([\w\W]*?)\|fr\|.*}} ===",l,re.UNICODE)
-                matching_word_nature_bis = re.match(r"=== {{S\|([\w\W]*?)\|fr\|.*}} ===",l,re.UNICODE)
                 matching_synonyme = re.match(r"==== {{S\|synonymes}} ====",l,re.UNICODE)
 
                 # Determine the section of the document we are in
@@ -469,29 +467,6 @@ try:
     parse(wikiFile, WikiHandler(wordslist, 'fr', _wiktio, output))
 except Exception as e: print(e)
 
-sortDicoFile(output, outputSorted)
-os.rename(outputSorted, output)
+sortDictionary(output)
 splitDicoFile(output, 15000)
-os.remove(output)
-#with open(output, 'a+') as dictionnary:
-#    dictionnary.write("</root>")
 
-'''def sortchildrenby(parent, attr):
-    parent[:] = sorted(parent, key=lambda child: child.get(attr))
-
-parser = lxml.etree.XMLParser(strip_cdata=False)
-tree = lxml.etree.parse(output, parser)
-root = tree.getroot()
-
-sortchildrenby(root, 'val')
-for c in root:
-    sortchildrenby(c, 'desc')
-    #c[:] =  sorted(c, key=lambda child: (child.get('desc')))
-
-outputSorted = output + "Sorted" 
-open(outputSorted, 'w').close()
-
-with open(outputSorted, 'a+', 0) as f:
-    f.write("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n")
-    f.write (lxml.etree.tostring(root, encoding="utf-8", method="xml"))
-    '''
